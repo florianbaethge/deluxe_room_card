@@ -175,6 +175,53 @@ describe("editor", () => {
     expect(emitted?.controls).toEqual([{ entity: "light.other" }]);
   });
 
+  it("stores picker colors as hex strings in the config", async () => {
+    const editor = await mountEditor({
+      ...base,
+      controls: [{ entity: "light.lamp", color: "#2f7d54" }],
+    });
+    let emitted: DeluxeRoomCardConfig | undefined;
+    editor.addEventListener("config-changed", (ev) => {
+      emitted = (ev as CustomEvent).detail.config;
+    });
+    await openSection(editor, "Controls");
+    // Expand the item row so its ha-form renders.
+    const row = editor.shadowRoot?.querySelector<HTMLElement>(".list-title");
+    row?.click();
+    await editor.updateComplete;
+    const form = editor.shadowRoot?.querySelector(".list-item ha-form");
+    expect(form).toBeTruthy();
+    // The color_rgb selector reports [r, g, b]; the config must stay hex.
+    form?.dispatchEvent(
+      new CustomEvent("value-changed", {
+        detail: {
+          value: { entity: "light.lamp", color: [210, 59, 52] },
+        },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    expect(emitted?.controls).toEqual([
+      { entity: "light.lamp", color: "#d23b34" },
+    ]);
+  });
+
+  it("uses the color_rgb selector for color fields", async () => {
+    const editor = await mountEditor();
+    const schemas = editor as unknown as {
+      _controlSchema: () => {
+        schema?: { name: string; selector?: object }[];
+      }[];
+      _alertSchema: () => { schema?: { name: string; selector?: object }[] }[];
+    };
+    const controlGrid = schemas._controlSchema().find((s) => s.schema);
+    const colorField = controlGrid?.schema?.find((f) => f.name === "color");
+    expect(colorField?.selector).toEqual({ color_rgb: {} });
+    const alertGrid = schemas._alertSchema().find((s) => s.schema);
+    const alertColor = alertGrid?.schema?.find((f) => f.name === "color");
+    expect(alertColor?.selector).toEqual({ color_rgb: {} });
+  });
+
   it("collapses climate thresholds into expandable schema blocks", async () => {
     const editor = await mountEditor();
     const schema = (
