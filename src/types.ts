@@ -86,6 +86,8 @@ export interface OpeningItem {
   control_entity?: string;
   name?: string;
   icon?: string;
+  /** Per-opening display style; falls back to openings.state_style. */
+  state_style?: StateStyle;
   tap_action?: TapAction;
   /** `domain.service` for tap_action: call-service. */
   service?: string;
@@ -94,6 +96,7 @@ export interface OpeningItem {
 }
 
 export interface OpeningsConfig {
+  /** Default display style for all openings; overridable per item. */
   state_style?: StateStyle;
   items?: OpeningItem[];
 }

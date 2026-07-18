@@ -481,10 +481,15 @@ export class DeluxeRoomCard extends LitElement {
 
   private _renderOpenings(): TemplateResult[] {
     const config = this._config!;
-    const style = (config.openings?.state_style ?? "label") as StateStyle;
-    return (config.openings?.items ?? []).map((item, index) =>
-      this._renderOpeningChip(openingView(item, this._getState, style, index)),
-    );
+    const defaultStyle = (config.openings?.state_style ??
+      "label") as StateStyle;
+    return (config.openings?.items ?? []).map((item, index) => {
+      // Per-opening override wins over the section default.
+      const style = (item.state_style ?? defaultStyle) as StateStyle;
+      return this._renderOpeningChip(
+        openingView(item, this._getState, style, index),
+      );
+    });
   }
 
   private _openingIcon(view: OpeningView): string {
@@ -1004,14 +1009,17 @@ export class DeluxeRoomCard extends LitElement {
     }
     .combined-box {
       position: relative;
-      width: 30px;
-      height: 30px;
-      border: 2.5px solid var(--drc-secondary);
-      border-radius: 5px;
+      width: 34px;
+      height: 34px;
+      /* Thick frame so the window-state color reads clearly, even when a
+         closed window's green rim sits on a busy background. */
+      border: 4px solid var(--drc-secondary);
+      border-radius: 6px;
       overflow: hidden;
       background: color-mix(in srgb, var(--drc-accent) 18%, transparent);
       flex-shrink: 0;
       display: inline-block;
+      box-sizing: border-box;
     }
     .combined-box.win-frame-open {
       border-color: var(--drc-open);

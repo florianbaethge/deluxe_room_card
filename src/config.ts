@@ -48,6 +48,10 @@ export function normalizeConfig(
   const style = config.openings?.state_style;
   if (style && !STATE_STYLES.includes(style))
     throw new ConfigError(`Unknown state_style: ${style}`);
+  for (const item of config.openings?.items ?? []) {
+    if (item.state_style && !STATE_STYLES.includes(item.state_style))
+      throw new ConfigError(`Unknown state_style: ${item.state_style}`);
+  }
 
   for (const item of config.controls ?? []) {
     if (!item.entity) throw new ConfigError("controls: entity is required");

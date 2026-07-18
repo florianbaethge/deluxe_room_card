@@ -59,6 +59,8 @@ interface ListSection<T> {
   summary: (item: T) => string;
   /** Render a color picker + reset row below the item form. */
   colorField?: boolean;
+  /** Map a config item to ha-form data (e.g. fill "default" enum values). */
+  formData?: (item: T) => Record<string, unknown>;
 }
 
 @customElement("deluxe-room-card-editor")
@@ -243,6 +245,15 @@ export class DeluxeRoomCardEditor extends LitElement {
         schema: [
           { name: "name", selector: { text: {} } },
           { name: "icon", selector: { icon: {} } },
+          // Empty value = fall back to the section's default state style.
+          this._select("state_style", [
+            ["", "style_default"],
+            ["combined", "style_combined"],
+            ["label", "style_label"],
+            ["bar", "style_bar"],
+            ["radial", "style_radial"],
+            ["color", "style_color"],
+          ]),
           this._select("tap_action", [
             ["more-info", "action_more_info"],
             ["toggle", "action_toggle"],
@@ -587,6 +598,8 @@ export class DeluxeRoomCardEditor extends LitElement {
         item.door ??
         item.cover ??
         this._t("opening"),
+      // Show the "(default)" option when no per-item style is set.
+      formData: (item) => ({ ...item, state_style: item.state_style ?? "" }),
     };
   }
 
@@ -666,7 +679,11 @@ export class DeluxeRoomCardEditor extends LitElement {
                   ? html`
                       <ha-form
                         .hass=${this.hass}
-                        .data=${item as Record<string, unknown>}
+                        .data=${
+                          section.formData
+                            ? section.formData(item)
+                            : (item as Record<string, unknown>)
+                        }
                         .schema=${section.schema(item)}
                         .computeLabel=${this._computeLabel}
                         @value-changed=${(ev: CustomEvent) =>

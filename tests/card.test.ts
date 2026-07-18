@@ -209,6 +209,32 @@ describe("rendering", () => {
     }
   });
 
+  it("honors a per-opening state_style over the section default", async () => {
+    const hass = makeHass([
+      entity("binary_sensor.win", "off"),
+      entity("cover.blind", "open", { current_position: 40 }),
+    ]);
+    const card = await mountCard(
+      {
+        ...base,
+        openings: {
+          state_style: "label",
+          items: [
+            {
+              window: "binary_sensor.win",
+              cover: "cover.blind",
+              state_style: "combined",
+            },
+          ],
+        },
+      },
+      hass,
+    );
+    // The combined style renders the framed box instead of an icon+text chip.
+    expect(card.shadowRoot?.querySelector(".chip-combined")).toBeTruthy();
+    expect(card.shadowRoot?.querySelector(".combined-box")).toBeTruthy();
+  });
+
   it("renders each state style without crashing", async () => {
     const hass = makeHass([
       entity("binary_sensor.win", "off"),

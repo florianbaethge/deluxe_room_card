@@ -281,6 +281,58 @@ describe("editor", () => {
     ).toBeGreaterThanOrEqual(2);
   });
 
+  it("offers a per-opening state_style with a default option", async () => {
+    const editor = await mountEditor();
+    const grid = (
+      editor as unknown as {
+        _openingSchema: () => {
+          schema?: {
+            name: string;
+            selector?: { select?: { options?: { value: string }[] } };
+          }[];
+        }[];
+      }
+    )
+      ._openingSchema()
+      .find((s) => s.schema);
+    const styleField = grid?.schema?.find((f) => f.name === "state_style");
+    const values = styleField?.selector?.select?.options?.map((o) => o.value);
+    expect(values).toEqual(["", "combined", "label", "bar", "radial", "color"]);
+  });
+
+  it("fills the default option and stores a chosen per-opening style", async () => {
+    const editor = await mountEditor({
+      ...base,
+      openings: { items: [{ window: "binary_sensor.win" }] },
+    });
+    let emitted: DeluxeRoomCardConfig | undefined;
+    editor.addEventListener("config-changed", (ev) => {
+      emitted = (ev as CustomEvent).detail.config;
+    });
+    await openFirstRow(editor, "Openings");
+    const itemForm = editor.shadowRoot?.querySelector(".list-item > ha-form");
+    // Choosing a concrete style stores it on the item.
+    itemForm?.dispatchEvent(
+      new CustomEvent("value-changed", {
+        detail: {
+          value: { window: "binary_sensor.win", state_style: "combined" },
+        },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    expect(emitted?.openings?.items?.[0].state_style).toBe("combined");
+    // Choosing the empty "default" option removes it again.
+    itemForm?.dispatchEvent(
+      new CustomEvent("value-changed", {
+        detail: { value: { window: "binary_sensor.win", state_style: "" } },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    expect(emitted?.openings?.items?.[0].state_style).toBeUndefined();
+  });
+
   it("collapses climate thresholds into expandable schema blocks", async () => {
     const editor = await mountEditor();
     const schema = (

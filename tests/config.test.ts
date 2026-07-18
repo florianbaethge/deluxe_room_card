@@ -37,6 +37,12 @@ describe("normalizeConfig", () => {
         openings: { state_style: "nope" as never },
       }),
     ).toThrow(ConfigError);
+    expect(() =>
+      normalizeConfig({
+        ...base,
+        openings: { items: [{ state_style: "nope" as never }] },
+      }),
+    ).toThrow(ConfigError);
   });
 
   it("rejects list items without entities", () => {
