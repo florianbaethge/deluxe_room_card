@@ -1122,17 +1122,17 @@ export class DeluxeRoomCard extends LitElement {
       align-items: center;
       justify-content: center;
       gap: 4px;
-      height: 52px;
-      min-width: 52px;
+      height: 46px;
+      min-width: 46px;
       padding: 0;
       border: none;
-      border-radius: 26px;
+      border-radius: 23px;
       background: var(--drc-control-bg);
       color: var(--drc-secondary);
       cursor: pointer;
       flex-shrink: 0;
       font: inherit;
-      --mdc-icon-size: 23px;
+      --mdc-icon-size: 21px;
       transition: background 120ms ease;
     }
     .control.labeled {
@@ -1209,7 +1209,7 @@ export class DeluxeRoomCard extends LitElement {
       gap: 10px;
     }
     ha-card.narrow .title {
-      font-size: 19px;
+      font-size: 18px;
     }
     /* Guarantee the title a fair share so a normal room name is not clipped
        to "Wohnzi…" by wide chips sitting on the same row. */
@@ -1217,54 +1217,63 @@ export class DeluxeRoomCard extends LitElement {
       min-width: 45%;
     }
     ha-card.narrow .climate {
-      gap: 9px;
+      gap: 8px;
       margin-top: 2px;
     }
     ha-card.narrow .climate-value {
-      font-size: 12.5px;
+      font-size: 12px;
       gap: 4px;
-      --mdc-icon-size: 15px;
+      --mdc-icon-size: 14px;
     }
     ha-card.narrow .climate-value.missing {
-      font-size: 12px;
+      font-size: 11.5px;
     }
     ha-card.narrow .chip-stack {
-      gap: 7px;
+      gap: 6px;
     }
     ha-card.narrow .chip {
       min-width: 0;
-      gap: 8px;
-      padding: 5px 11px;
+      gap: 7px;
+      padding: 4px 10px;
+      border-radius: 20px;
     }
     ha-card.narrow .chip-icon {
-      --mdc-icon-size: 20px;
+      --mdc-icon-size: 18px;
     }
     ha-card.narrow .chip-title {
-      font-size: 13px;
+      font-size: 12px;
     }
     ha-card.narrow .chip-sub {
-      font-size: 11.5px;
+      font-size: 11px;
     }
     ha-card.narrow .combined-box {
-      width: 28px;
-      height: 28px;
+      width: 26px;
+      height: 26px;
       border-width: 3.5px;
     }
     ha-card.narrow .bar-track {
-      width: 40px;
+      width: 36px;
+      height: 7px;
     }
     ha-card.narrow .radial,
     ha-card.narrow .radial svg {
-      width: 30px;
-      height: 30px;
+      width: 28px;
+      height: 28px;
     }
     ha-card.narrow .control {
-      height: 46px;
-      min-width: 46px;
-      --mdc-icon-size: 21px;
+      height: 40px;
+      min-width: 40px;
+      border-radius: 20px;
+      --mdc-icon-size: 19px;
+    }
+    ha-card.narrow .control.labeled {
+      padding: 0 12px;
+    }
+    ha-card.narrow .control-label {
+      font-size: 12.5px;
     }
     ha-card.narrow .dock {
-      gap: 8px;
+      gap: 7px;
     }
     ha-card.narrow .room-icon {
       left: 15px;
