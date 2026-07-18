@@ -68,6 +68,9 @@ export class DeluxeRoomCardEditor extends LitElement {
 
   @state() private _expanded: Record<string, number | null> = {};
 
+  /** Which top-level editor sections are unfolded. */
+  @state() private _openSections: Record<string, boolean> = {};
+
   @state() private _importArea = "";
 
   public setConfig(config: DeluxeRoomCardConfig): void {
@@ -176,29 +179,53 @@ export class DeluxeRoomCardEditor extends LitElement {
         selector: { entity: { domain: "sensor", device_class: "humidity" } },
       },
       {
+        // Collapsed by default so the editor stays short.
         name: "temperature_thresholds",
-        type: "grid",
+        type: "expandable",
+        title: this._t("thresholds_temp"),
         schema: [
-          { name: "low", selector: { number: { mode: "box", step: 0.5 } } },
           {
-            name: "low_crit",
-            selector: { number: { mode: "box", step: 0.5 } },
-          },
-          { name: "high", selector: { number: { mode: "box", step: 0.5 } } },
-          {
-            name: "high_crit",
-            selector: { number: { mode: "box", step: 0.5 } },
+            name: "",
+            type: "grid",
+            schema: [
+              { name: "low", selector: { number: { mode: "box", step: 0.5 } } },
+              {
+                name: "low_crit",
+                selector: { number: { mode: "box", step: 0.5 } },
+              },
+              {
+                name: "high",
+                selector: { number: { mode: "box", step: 0.5 } },
+              },
+              {
+                name: "high_crit",
+                selector: { number: { mode: "box", step: 0.5 } },
+              },
+            ],
           },
         ],
       },
       {
         name: "humidity_thresholds",
-        type: "grid",
+        type: "expandable",
+        title: this._t("thresholds_hum"),
         schema: [
-          { name: "low", selector: { number: { mode: "box", step: 1 } } },
-          { name: "low_crit", selector: { number: { mode: "box", step: 1 } } },
-          { name: "high", selector: { number: { mode: "box", step: 1 } } },
-          { name: "high_crit", selector: { number: { mode: "box", step: 1 } } },
+          {
+            name: "",
+            type: "grid",
+            schema: [
+              { name: "low", selector: { number: { mode: "box", step: 1 } } },
+              {
+                name: "low_crit",
+                selector: { number: { mode: "box", step: 1 } },
+              },
+              { name: "high", selector: { number: { mode: "box", step: 1 } } },
+              {
+                name: "high_crit",
+                selector: { number: { mode: "box", step: 1 } },
+              },
+            ],
+          },
         ],
       },
       { name: "alert_on_threshold", selector: { boolean: {} } },
@@ -392,6 +419,11 @@ export class DeluxeRoomCardEditor extends LitElement {
       show_icon: config.show_icon !== false,
     };
 
+    const climate = config.climate ?? {};
+    const climateCount = [climate.temperature, climate.humidity].filter(
+      Boolean,
+    ).length;
+
     return html`
       <ha-form
         .hass=${this.hass}
@@ -401,47 +433,85 @@ export class DeluxeRoomCardEditor extends LitElement {
         @value-changed=${this._generalChanged}
       ></ha-form>
 
-      <h3>${this._t("climate")}</h3>
-      <ha-form
-        .hass=${this.hass}
-        .data=${{
-          temperature: config.climate?.temperature ?? "",
-          humidity: config.climate?.humidity ?? "",
-          temperature_thresholds: config.climate?.temperature_thresholds ?? {},
-          humidity_thresholds: config.climate?.humidity_thresholds ?? {},
-          alert_on_threshold: config.climate?.alert_on_threshold ?? false,
-        }}
-        .schema=${this._climateSchema()}
-        .computeLabel=${this._computeLabel}
-        @value-changed=${this._climateChanged}
-      ></ha-form>
-
-      ${this._renderAreaImport()} ${this._renderList(this._openingsSection())}
+      ${this._renderSection(
+        "climate",
+        this._t("climate"),
+        climateCount,
+        () => html`
+          <ha-form
+            .hass=${this.hass}
+            .data=${{
+              temperature: climate.temperature ?? "",
+              humidity: climate.humidity ?? "",
+              temperature_thresholds: climate.temperature_thresholds ?? {},
+              humidity_thresholds: climate.humidity_thresholds ?? {},
+              alert_on_threshold: climate.alert_on_threshold ?? false,
+            }}
+            .schema=${this._climateSchema()}
+            .computeLabel=${this._computeLabel}
+            @value-changed=${this._climateChanged}
+          ></ha-form>
+        `,
+      )}
+      ${this._renderSection("import", this._t("import_from_area"), 0, () =>
+        this._renderAreaImport(),
+      )}
+      ${this._renderList(this._openingsSection())}
       ${this._renderList(this._controlsSection())}
       ${this._renderList(this._alertsSection())} ${this._renderRules()}
     `;
   }
 
+  /** Collapsible top-level editor section (collapsed by default). */
+  private _renderSection(
+    key: string,
+    title: string,
+    count: number,
+    body: () => TemplateResult,
+  ): TemplateResult {
+    const open = this._openSections[key] ?? false;
+    return html`
+      <div class="section">
+        <button class="section-head" @click=${() => this._toggleSection(key)}>
+          <ha-icon
+            .icon=${open ? "mdi:chevron-down" : "mdi:chevron-right"}
+          ></ha-icon>
+          <span class="section-title">${title}</span>
+          ${
+            count > 0
+              ? html`<span class="section-count">${count}</span>`
+              : nothing
+          }
+        </button>
+        ${open ? html`<div class="section-body">${body()}</div>` : nothing}
+      </div>
+    `;
+  }
+
+  private _toggleSection(key: string): void {
+    this._openSections = {
+      ...this._openSections,
+      [key]: !(this._openSections[key] ?? false),
+    };
+  }
+
   private _renderAreaImport(): TemplateResult {
-    const areas = Object.values(this.hass?.areas ?? {});
-    if (areas.length === 0) return html``;
+    // The native area selector keeps registry lookups and search consistent
+    // with the rest of Home Assistant (a hand-rolled ha-select did not
+    // reliably propagate the selection).
     return html`
       <div class="area-import">
-        <ha-select
-          .label=${this._t("area")}
-          .value=${this._importArea}
-          naturalMenuWidth
-          @selected=${(ev: CustomEvent & { target: { value?: string } }) => {
-            this._importArea = ev.target.value ?? "";
+        <ha-form
+          .hass=${this.hass}
+          .data=${{ area: this._importArea }}
+          .schema=${[{ name: "area", selector: { area: {} } }]}
+          .computeLabel=${() => this._t("area")}
+          @value-changed=${(ev: CustomEvent) => {
+            ev.stopPropagation();
+            this._importArea =
+              (ev.detail.value as { area?: string }).area ?? "";
           }}
-          @closed=${(ev: Event) => ev.stopPropagation()}
-        >
-          ${areas.map(
-            (area) => html`
-              <ha-list-item .value=${area.area_id}>${area.name}</ha-list-item>
-            `,
-          )}
-        </ha-select>
+        ></ha-form>
         <mwc-button
           .disabled=${!this._importArea}
           @click=${this._importFromArea}
@@ -503,9 +573,17 @@ export class DeluxeRoomCardEditor extends LitElement {
   }
 
   private _renderList<T>(section: ListSection<T>): TemplateResult {
+    return this._renderSection(
+      section.key,
+      this._t(section.titleKey),
+      section.items.length,
+      () => this._renderListBody(section),
+    );
+  }
+
+  private _renderListBody<T>(section: ListSection<T>): TemplateResult {
     const expandedIndex = this._expanded[section.key] ?? null;
     return html`
-      <h3>${this._t(section.titleKey)}</h3>
       <div class="list">
         ${section.items.map((item, index) => {
           const open = expandedIndex === index;
@@ -628,9 +706,17 @@ export class DeluxeRoomCardEditor extends LitElement {
 
   private _renderRules(): TemplateResult {
     const rules = this._config?.card_alerts ?? [];
+    return this._renderSection(
+      "card_alerts",
+      this._t("card_alerts"),
+      rules.length,
+      () => this._renderRulesBody(rules),
+    );
+  }
+
+  private _renderRulesBody(rules: CardAlertRule[]): TemplateResult {
     const expandedIndex = this._expanded["card_alerts"] ?? null;
     return html`
-      <h3>${this._t("card_alerts")}</h3>
       <div class="list">
         ${rules.map((rule, index) => {
           const open = expandedIndex === index;
@@ -809,9 +895,59 @@ export class DeluxeRoomCardEditor extends LitElement {
   }
 
   static styles = css`
-    h3 {
-      margin: 20px 0 6px;
+    .section {
+      margin-top: 12px;
+      border: 1px solid var(--divider-color, #e0e0e0);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 10px;
+      background: none;
+      border: none;
+      color: inherit;
+      font: inherit;
+      font-weight: 600;
       font-size: 15px;
+      cursor: pointer;
+      text-align: left;
+    }
+    .section-head:hover {
+      background: color-mix(
+        in srgb,
+        var(--primary-text-color, #212121) 4%,
+        transparent
+      );
+    }
+    .section-title {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .section-count {
+      flex-shrink: 0;
+      min-width: 22px;
+      padding: 1px 7px;
+      border-radius: 11px;
+      background: color-mix(
+        in srgb,
+        var(--primary-color, #2f7d54) 15%,
+        transparent
+      );
+      color: var(--primary-color, #2f7d54);
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    .section-body {
+      padding: 2px 10px 12px;
     }
     .list {
       display: flex;
