@@ -1,0 +1,8 @@
+# Node (dist/ is committed on purpose: HACS serves the built card)
+node_modules/
+
+# Test/coverage output
+coverage/
+
+# macOS
+.DS_Store

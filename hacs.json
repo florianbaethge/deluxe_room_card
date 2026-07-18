@@ -1,0 +1,6 @@
+{
+  "name": "Deluxe Room Card",
+  "render_readme": true,
+  "filename": "deluxe-room-card.js",
+  "homeassistant": "2024.6.0"
+}

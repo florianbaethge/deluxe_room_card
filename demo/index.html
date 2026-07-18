@@ -1,0 +1,363 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Deluxe Room Card — demo</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary-color: #03a9f4;
+        --card-background-color: #ffffff;
+        --ha-card-background: #ffffff;
+        --primary-text-color: #212121;
+        --secondary-text-color: #6f7377;
+        --secondary-background-color: #e8eaed;
+        --divider-color: #e0e0e0;
+        --success-color: #43a047;
+        --warning-color: #d6a03f;
+        --error-color: #d23b34;
+        --info-color: #2f6f9d;
+        --page-bg: #f2f4f7;
+      }
+      :root.dark {
+        --primary-color: #29b6f6;
+        --card-background-color: #1e2023;
+        --ha-card-background: #1e2023;
+        --primary-text-color: #e7e9ec;
+        --secondary-text-color: #9aa0a6;
+        --secondary-background-color: #37393c;
+        --divider-color: #2a2d31;
+        --success-color: #4bab77;
+        --warning-color: #d6a03f;
+        --error-color: #e2645b;
+        --info-color: #5aa9e0;
+        --page-bg: #0b0c0e;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        background: var(--page-bg);
+        font-family: Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: var(--primary-text-color);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, 520px);
+        gap: 18px;
+        justify-content: center;
+      }
+      .half-row {
+        grid-column: span 1;
+      }
+      deluxe-room-card {
+        display: block;
+      }
+      /* ha-card is not defined outside Home Assistant: give it card chrome */
+      deluxe-room-card::part(none) {
+      }
+    </style>
+    <script>
+      // Minimal ha-icon shim: renders mdi icons via the @mdi/font webfont.
+      // Renders into its own shadow root and never touches the light DOM, so
+      // Lit's template instantiation is not disturbed (like the real ha-icon).
+      window.mdiCodepoints = fetch(
+        "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css",
+      )
+        .then((r) => r.text())
+        .then((css) => {
+          const map = {};
+          for (const m of css.matchAll(
+            /\.mdi-([\w-]+)::before\{content:"\\(F[0-9A-F]+)"\}/g,
+          )) {
+            map[m[1]] = String.fromCodePoint(parseInt(m[2], 16));
+          }
+          return map;
+        });
+
+      class HaIcon extends HTMLElement {
+        static get observedAttributes() {
+          return ["icon"];
+        }
+        constructor() {
+          super();
+          this.attachShadow({ mode: "open" });
+          this.shadowRoot.innerHTML = `
+            <style>
+              :host { display: inline-flex; align-items: center; justify-content: center; }
+              span {
+                font-family: "Material Design Icons";
+                font-size: var(--mdc-icon-size, 24px);
+                line-height: 1;
+                font-style: normal;
+              }
+            </style>
+            <span></span>`;
+        }
+        set icon(value) {
+          this._icon = value;
+          this._render();
+        }
+        get icon() {
+          return this._icon ?? this.getAttribute("icon");
+        }
+        connectedCallback() {
+          this._render();
+        }
+        attributeChangedCallback() {
+          this._render();
+        }
+        async _render() {
+          const map = await window.mdiCodepoints;
+          const name = (this.icon || "").replace("mdi:", "");
+          this.shadowRoot.querySelector("span").textContent = map[name] ?? "";
+        }
+      }
+      customElements.define("ha-icon", HaIcon);
+    </script>
+  </head>
+  <body>
+    <div class="grid" id="grid"></div>
+    <script type="module">
+      import "../dist/deluxe-room-card.js";
+
+      if (new URLSearchParams(location.search).get("theme") === "dark") {
+        document.documentElement.classList.add("dark");
+      }
+
+      const now = new Date().toISOString();
+      const longAgo = new Date(Date.now() - 3600_000).toISOString();
+      const e = (entity_id, state, attributes = {}) => [
+        entity_id,
+        { entity_id, state, attributes, last_changed: longAgo },
+      ];
+
+      const hass = {
+        locale: { language: "en" },
+        callService: async () => {},
+        states: Object.fromEntries([
+          e("sun.sun", "below_horizon"),
+          // Living room
+          e("sensor.lr_temp", "22.5"),
+          e("sensor.lr_hum", "48"),
+          e("binary_sensor.lr_window", "off"),
+          e("binary_sensor.lr_window_mid", "tilted"),
+          e("binary_sensor.lr_window_right", "on"),
+          e("cover.lr_blind_left", "open", { current_position: 100 }),
+          e("cover.lr_blind_mid", "open", { current_position: 60 }),
+          e("cover.lr_blind_right", "closed", { current_position: 0 }),
+          e("light.lr_floor_lamp", "on"),
+          e("light.lr_spot", "off"),
+          // Kitchen
+          e("sensor.k_temp", "24.1"),
+          e("sensor.k_hum", "51"),
+          e("binary_sensor.k_door", "on", { device_class: "door" }),
+          e("cover.k_blind_left", "open", { current_position: 100 }),
+          e("cover.k_blind_right", "open", { current_position: 100 }),
+          e("light.k_ceiling", "on"),
+          e("light.k_spots", "on"),
+          e("switch.k_coffee", "off"),
+          // Bathroom
+          e("sensor.b_temp", "23.8"),
+          e("sensor.b_hum", "84"),
+          e("binary_sensor.b_window", "off"),
+          e("cover.b_roof", "open", { current_position: 40 }),
+          e("light.b_mirror", "off"),
+          // Bedroom
+          e("sensor.bed_temp", "17.5"),
+          e("sensor.bed_hum", "55"),
+          e("binary_sensor.bed_window", "on"),
+          e("cover.bed_blind", "open", { current_position: 100 }),
+          e("light.bed_night", "on"),
+          // Guest room (compact)
+          e("sensor.g_temp", "unavailable"),
+          e("binary_sensor.g_window", "off"),
+          e("cover.g_blind", "closed", { current_position: 0 }),
+          e("light.g_ceiling", "off"),
+          e("sensor.g_window_battery", "9"),
+          // Utility room
+          e("binary_sensor.u_leak", "on"),
+          e("binary_sensor.u_window", "off"),
+          e("switch.u_washer", "on"),
+        ]),
+      };
+
+      const cards = [
+        {
+          type: "custom:deluxe-room-card",
+          title: "Living Room",
+          icon: "mdi:sofa",
+          layout: "classic",
+          color_style: "override",
+          accent_color: "#2f7d54",
+          climate: {
+            temperature: "sensor.lr_temp",
+            humidity: "sensor.lr_hum",
+            temperature_thresholds: { low: 19, low_crit: 17, high: 25, high_crit: 28 },
+            humidity_thresholds: { low: 30, high: 60, high_crit: 75 },
+          },
+          openings: {
+            state_style: "label",
+            items: [
+              { window: "binary_sensor.lr_window", name: "Windows" },
+              { window: "binary_sensor.lr_window", cover: "cover.lr_blind_left", name: "Left" },
+              { window: "binary_sensor.lr_window_mid", cover: "cover.lr_blind_mid", name: "Middle" },
+              { window: "binary_sensor.lr_window_right", cover: "cover.lr_blind_right", name: "Right" },
+            ],
+          },
+          controls: [
+            { entity: "light.lr_floor_lamp", icon: "mdi:floor-lamp" },
+            { entity: "light.lr_spot", icon: "mdi:wall-sconce" },
+          ],
+        },
+        {
+          type: "custom:deluxe-room-card",
+          title: "Kitchen",
+          icon: "mdi:silverware-fork-knife",
+          layout: "header-bar",
+          color_style: "override",
+          accent_color: "#2f6f7d",
+          climate: { temperature: "sensor.k_temp", humidity: "sensor.k_hum" },
+          openings: {
+            state_style: "color",
+            items: [
+              { door: "binary_sensor.k_door", name: "Patio door" },
+              { cover: "cover.k_blind_left", name: "Left" },
+              { cover: "cover.k_blind_right", name: "Right" },
+            ],
+          },
+          controls: [
+            { entity: "light.k_ceiling", icon: "mdi:ceiling-light" },
+            { entity: "light.k_spots", icon: "mdi:track-light" },
+            { entity: "switch.k_coffee", icon: "mdi:coffee-maker" },
+          ],
+        },
+        {
+          type: "custom:deluxe-room-card",
+          title: "Bathroom",
+          icon: "mdi:shower",
+          layout: "classic",
+          color_style: "override",
+          accent_color: "#7d4a2f",
+          climate: {
+            temperature: "sensor.b_temp",
+            humidity: "sensor.b_hum",
+            humidity_thresholds: { high: 60, high_crit: 75 },
+            alert_on_threshold: true,
+          },
+          openings: {
+            state_style: "radial",
+            items: [
+              { window: "binary_sensor.b_window", name: "Window" },
+              { cover: "cover.b_roof", name: "Roof window" },
+            ],
+          },
+          controls: [{ entity: "light.b_mirror", icon: "mdi:mirror" }],
+          card_alerts: [
+            {
+              outline: "critical",
+              match: "all",
+              conditions: [{ entity: "sensor.b_hum", above: 75 }],
+            },
+          ],
+        },
+        {
+          type: "custom:deluxe-room-card",
+          title: "Bedroom",
+          icon: "mdi:bed-king",
+          layout: "classic",
+          color_style: "override",
+          accent_color: "#4a2f7d",
+          climate: {
+            temperature: "sensor.bed_temp",
+            humidity: "sensor.bed_hum",
+            temperature_thresholds: { low: 19, low_crit: 16 },
+          },
+          openings: {
+            state_style: "combined",
+            items: [
+              { window: "binary_sensor.bed_window", cover: "cover.bed_blind", name: "Window" },
+            ],
+          },
+          controls: [{ entity: "light.bed_night", icon: "mdi:weather-night" }],
+          card_alerts: [
+            {
+              outline: "warning",
+              match: "all",
+              conditions: [
+                { after: "sunset" },
+                { entity: "binary_sensor.bed_window", state: "on" },
+              ],
+            },
+          ],
+        },
+        {
+          type: "custom:deluxe-room-card",
+          title: "Guest Room",
+          icon: "mdi:bed",
+          layout: "compact",
+          width: "half",
+          openings: {
+            state_style: "label",
+            items: [
+              { window: "binary_sensor.g_window", cover: "cover.g_blind", name: "Window" },
+            ],
+          },
+          climate: { temperature: "sensor.g_temp" },
+          controls: [{ entity: "light.g_ceiling", icon: "mdi:ceiling-light" }],
+          alerts: [
+            {
+              entity: "sensor.g_window_battery",
+              below: 15,
+              label: "Battery low · window sensor",
+              icon: "mdi:battery-alert",
+              severity: "warning",
+              full_width: true,
+            },
+          ],
+        },
+        {
+          type: "custom:deluxe-room-card",
+          title: "Utility Room",
+          icon: "mdi:washing-machine",
+          layout: "controls-bottom",
+          openings: {
+            state_style: "bar",
+            items: [{ window: "binary_sensor.u_window", name: "Window" }],
+          },
+          controls: [
+            { entity: "switch.u_washer", icon: "mdi:washing-machine", label: "WM" },
+          ],
+          alerts: [
+            {
+              entity: "binary_sensor.u_leak",
+              label: "Water leak detected!",
+              icon: "mdi:water-alert",
+              severity: "critical",
+              full_width: true,
+            },
+          ],
+        },
+      ];
+
+      const grid = document.getElementById("grid");
+      for (const config of cards) {
+        const card = document.createElement("deluxe-room-card");
+        card.setConfig(config);
+        card.hass = hass;
+        grid.appendChild(card);
+      }
+      // Signal readiness for the screenshot runner.
+      document.title = "deluxe-room-card demo ready";
+    </script>
+  </body>
+</html>
