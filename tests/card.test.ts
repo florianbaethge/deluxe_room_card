@@ -235,6 +235,17 @@ describe("rendering", () => {
     expect(card.shadowRoot?.querySelector(".combined-box")).toBeTruthy();
   });
 
+  it("applies the narrow class for half width", async () => {
+    const wide = await mountCard({ ...base, width: "full" }, makeHass([]));
+    expect(
+      wide.shadowRoot?.querySelector("ha-card")?.classList.contains("narrow"),
+    ).toBe(false);
+    const half = await mountCard({ ...base, width: "half" }, makeHass([]));
+    expect(
+      half.shadowRoot?.querySelector("ha-card")?.classList.contains("narrow"),
+    ).toBe(true);
+  });
+
   it("renders each state style without crashing", async () => {
     const hass = makeHass([
       entity("binary_sensor.win", "off"),
