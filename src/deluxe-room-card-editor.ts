@@ -57,6 +57,8 @@ interface ListSection<T> {
   schema: (item: T) => HaFormSchema[];
   newItem: () => T;
   summary: (item: T) => string;
+  /** Render a color picker + reset row below the item form. */
+  colorField?: boolean;
 }
 
 @customElement("deluxe-room-card-editor")
@@ -112,13 +114,7 @@ export class DeluxeRoomCardEditor extends LitElement {
   }
 
   private _generalSchema(): HaFormSchema[] {
-    const overrides: HaFormSchema[] =
-      this._config?.color_style === "override"
-        ? [
-            { name: "accent_color", selector: { color_rgb: {} } },
-            { name: "bg_tint", selector: { color_rgb: {} } },
-          ]
-        : [];
+    // Colors are rendered as separate rows (picker + reset), not in here.
     return [
       { name: "title", selector: { text: {} } },
       { name: "icon", selector: { icon: {} } },
@@ -154,7 +150,6 @@ export class DeluxeRoomCardEditor extends LitElement {
             ["theme", "color_theme"],
             ["override", "color_override"],
           ]),
-          ...overrides,
         ],
       },
       {
@@ -274,7 +269,6 @@ export class DeluxeRoomCardEditor extends LitElement {
           { name: "name", selector: { text: {} } },
           { name: "icon", selector: { icon: {} } },
           { name: "label", selector: { text: {} } },
-          { name: "color", selector: { color_rgb: {} } },
         ],
       },
     ];
@@ -299,7 +293,6 @@ export class DeluxeRoomCardEditor extends LitElement {
             ["critical", "severity_critical"],
           ]),
           { name: "full_width", selector: { boolean: {} } },
-          { name: "color", selector: { color_rgb: {} } },
         ],
       },
     ];
@@ -414,8 +407,6 @@ export class DeluxeRoomCardEditor extends LitElement {
       state_style: config.openings?.state_style ?? "label",
       icon_size: config.icon_size ?? 1,
       color_style: config.color_style ?? "theme",
-      accent_color: hexToRgb(config.accent_color),
-      bg_tint: hexToRgb(config.bg_tint),
       show_name: config.show_name !== false,
       show_climate: config.show_climate !== false,
       show_icon: config.show_icon !== false,
@@ -434,7 +425,22 @@ export class DeluxeRoomCardEditor extends LitElement {
         .computeLabel=${this._computeLabel}
         @value-changed=${this._generalChanged}
       ></ha-form>
-
+      ${
+        (config.color_style ?? "theme") === "override"
+          ? html`
+              ${this._renderColorRow(
+                this._t("accent_color"),
+                config.accent_color,
+                (hex) => this._emit({ ...this._config!, accent_color: hex }),
+              )}
+              ${this._renderColorRow(
+                this._t("bg_tint"),
+                config.bg_tint,
+                (hex) => this._emit({ ...this._config!, bg_tint: hex }),
+              )}
+            `
+          : nothing
+      }
       ${this._renderSection(
         "climate",
         this._t("climate"),
@@ -495,6 +501,40 @@ export class DeluxeRoomCardEditor extends LitElement {
       ...this._openSections,
       [key]: !(this._openSections[key] ?? false),
     };
+  }
+
+  /**
+   * A color field with a reset button. The native color_rgb picker cannot
+   * represent "no value" (a browser color input always has one), so the reset
+   * button next to it clears the config back to the theme default.
+   */
+  private _renderColorRow(
+    label: string,
+    hex: string | undefined,
+    onChange: (hex: string | undefined) => void,
+  ): TemplateResult {
+    return html`
+      <div class="color-row">
+        <ha-form
+          class="color-form"
+          .hass=${this.hass}
+          .data=${{ color: hexToRgb(hex) }}
+          .schema=${[{ name: "color", selector: { color_rgb: {} } }]}
+          .computeLabel=${() => label}
+          @value-changed=${(ev: CustomEvent) => {
+            ev.stopPropagation();
+            onChange(rgbToHex((ev.detail.value as { color?: unknown }).color));
+          }}
+        ></ha-form>
+        <ha-icon-button
+          class="color-reset"
+          .label=${this._t("reset")}
+          .disabled=${!hex}
+          @click=${() => onChange(undefined)}
+          ><ha-icon icon="mdi:backspace-outline"></ha-icon
+        ></ha-icon-button>
+      </div>
+    `;
   }
 
   private _renderAreaImport(): TemplateResult {
@@ -559,6 +599,7 @@ export class DeluxeRoomCardEditor extends LitElement {
       schema: () => this._controlSchema(),
       newItem: () => ({ entity: "" }),
       summary: (item) => item.name ?? item.entity ?? this._t("control"),
+      colorField: true,
     };
   }
 
@@ -571,6 +612,7 @@ export class DeluxeRoomCardEditor extends LitElement {
       schema: () => this._alertSchema(),
       newItem: () => ({ entity: "" }),
       summary: (item) => item.label ?? item.entity ?? this._t("alert"),
+      colorField: true,
     };
   }
 
@@ -624,12 +666,22 @@ export class DeluxeRoomCardEditor extends LitElement {
                   ? html`
                       <ha-form
                         .hass=${this.hass}
-                        .data=${itemToFormData(item as Record<string, unknown>)}
+                        .data=${item as Record<string, unknown>}
                         .schema=${section.schema(item)}
                         .computeLabel=${this._computeLabel}
                         @value-changed=${(ev: CustomEvent) =>
                           this._itemChanged(section, index, ev)}
                       ></ha-form>
+                      ${
+                        section.colorField
+                          ? this._renderColorRow(
+                              this._t("color"),
+                              (item as { color?: string }).color,
+                              (hex) =>
+                                this._itemColorChanged(section, index, hex),
+                            )
+                          : nothing
+                      }
                     `
                   : nothing
               }
@@ -700,7 +752,27 @@ export class DeluxeRoomCardEditor extends LitElement {
   ): void {
     ev.stopPropagation();
     const items = [...section.items];
-    items[index] = pruneEmpty(formDataToItem(ev.detail.value)) as T;
+    // Merge onto the existing item so fields not in the form (e.g. the
+    // separately-rendered color) are preserved.
+    const merged = {
+      ...(items[index] as Record<string, unknown>),
+      ...(ev.detail.value as Record<string, unknown>),
+    };
+    items[index] = pruneEmpty(merged) as T;
+    this._writeSection(section, items);
+  }
+
+  private _itemColorChanged<T>(
+    section: ListSection<T>,
+    index: number,
+    hex: string | undefined,
+  ): void {
+    const items = [...section.items];
+    const merged = {
+      ...(items[index] as Record<string, unknown>),
+      color: hex,
+    };
+    items[index] = pruneEmpty(merged) as T;
     this._writeSection(section, items);
   }
 
@@ -866,8 +938,6 @@ export class DeluxeRoomCardEditor extends LitElement {
       width: value.width as DeluxeRoomCardConfig["width"],
       icon_size: value.icon_size as number,
       color_style: value.color_style as DeluxeRoomCardConfig["color_style"],
-      accent_color: rgbToHex(value.accent_color),
-      bg_tint: rgbToHex(value.bg_tint),
       show_name: value.show_name as boolean,
       show_climate: value.show_climate as boolean,
       show_icon: value.show_icon as boolean,
@@ -902,6 +972,21 @@ export class DeluxeRoomCardEditor extends LitElement {
       border: 1px solid var(--divider-color, #e0e0e0);
       border-radius: 12px;
       overflow: hidden;
+    }
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 8px;
+    }
+    .color-row .color-form {
+      flex: 1;
+      min-width: 0;
+    }
+    .color-row .color-reset {
+      flex-shrink: 0;
+      --mdc-icon-button-size: 40px;
+      --mdc-icon-size: 20px;
     }
     .section-head {
       display: flex;
@@ -1031,22 +1116,6 @@ export class DeluxeRoomCardEditor extends LitElement {
 }
 
 /** Drop empty strings / empty objects so the YAML stays clean. */
-/** Config item → ha-form data: hex colors become RGB arrays for color_rgb. */
-function itemToFormData(
-  item: Record<string, unknown>,
-): Record<string, unknown> {
-  if (typeof item.color !== "string") return item;
-  return { ...item, color: hexToRgb(item.color) };
-}
-
-/** ha-form data → config item: RGB arrays back to hex strings. */
-function formDataToItem(
-  value: Record<string, unknown>,
-): Record<string, unknown> {
-  if (!Array.isArray(value.color)) return value;
-  return { ...value, color: rgbToHex(value.color) };
-}
-
 function pruneEmpty<T extends Record<string, unknown>>(value: T): T {
   const result: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(value ?? {})) {

@@ -175,28 +175,35 @@ describe("editor", () => {
     expect(emitted?.controls).toEqual([{ entity: "light.other" }]);
   });
 
+  /** Expand a section, then the first list row inside it. */
+  async function openFirstRow(
+    editor: DeluxeRoomCardEditor,
+    section: string,
+  ): Promise<void> {
+    await openSection(editor, section);
+    const row = editor.shadowRoot?.querySelector<HTMLElement>(".list-title");
+    row?.click();
+    await editor.updateComplete;
+  }
+
   it("stores picker colors as hex strings in the config", async () => {
     const editor = await mountEditor({
       ...base,
-      controls: [{ entity: "light.lamp", color: "#2f7d54" }],
+      controls: [{ entity: "light.lamp" }],
     });
     let emitted: DeluxeRoomCardConfig | undefined;
     editor.addEventListener("config-changed", (ev) => {
       emitted = (ev as CustomEvent).detail.config;
     });
-    await openSection(editor, "Controls");
-    // Expand the item row so its ha-form renders.
-    const row = editor.shadowRoot?.querySelector<HTMLElement>(".list-title");
-    row?.click();
-    await editor.updateComplete;
-    const form = editor.shadowRoot?.querySelector(".list-item ha-form");
-    expect(form).toBeTruthy();
+    await openFirstRow(editor, "Controls");
+    const colorForm = editor.shadowRoot?.querySelector(
+      ".list-item .color-form",
+    );
+    expect(colorForm).toBeTruthy();
     // The color_rgb selector reports [r, g, b]; the config must stay hex.
-    form?.dispatchEvent(
+    colorForm?.dispatchEvent(
       new CustomEvent("value-changed", {
-        detail: {
-          value: { entity: "light.lamp", color: [210, 59, 52] },
-        },
+        detail: { value: { color: [210, 59, 52] } },
         bubbles: true,
         composed: true,
       }),
@@ -206,20 +213,72 @@ describe("editor", () => {
     ]);
   });
 
-  it("uses the color_rgb selector for color fields", async () => {
-    const editor = await mountEditor();
-    const schemas = editor as unknown as {
-      _controlSchema: () => {
-        schema?: { name: string; selector?: object }[];
-      }[];
-      _alertSchema: () => { schema?: { name: string; selector?: object }[] }[];
-    };
-    const controlGrid = schemas._controlSchema().find((s) => s.schema);
-    const colorField = controlGrid?.schema?.find((f) => f.name === "color");
-    expect(colorField?.selector).toEqual({ color_rgb: {} });
-    const alertGrid = schemas._alertSchema().find((s) => s.schema);
-    const alertColor = alertGrid?.schema?.find((f) => f.name === "color");
-    expect(alertColor?.selector).toEqual({ color_rgb: {} });
+  it("preserves the color when other item fields change", async () => {
+    const editor = await mountEditor({
+      ...base,
+      controls: [{ entity: "light.lamp", color: "#2f7d54" }],
+    });
+    let emitted: DeluxeRoomCardConfig | undefined;
+    editor.addEventListener("config-changed", (ev) => {
+      emitted = (ev as CustomEvent).detail.config;
+    });
+    await openFirstRow(editor, "Controls");
+    const itemForm = editor.shadowRoot?.querySelector(".list-item > ha-form");
+    itemForm?.dispatchEvent(
+      new CustomEvent("value-changed", {
+        detail: { value: { entity: "light.lamp", name: "Lamp" } },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    expect(emitted?.controls).toEqual([
+      { entity: "light.lamp", name: "Lamp", color: "#2f7d54" },
+    ]);
+  });
+
+  it("resets an item color to the theme default", async () => {
+    const editor = await mountEditor({
+      ...base,
+      controls: [{ entity: "light.lamp", color: "#2f7d54" }],
+    });
+    let emitted: DeluxeRoomCardConfig | undefined;
+    editor.addEventListener("config-changed", (ev) => {
+      emitted = (ev as CustomEvent).detail.config;
+    });
+    await openFirstRow(editor, "Controls");
+    const reset = editor.shadowRoot?.querySelector<HTMLElement>(
+      ".list-item .color-reset",
+    );
+    expect(reset).toBeTruthy();
+    reset?.click();
+    expect(emitted?.controls).toEqual([{ entity: "light.lamp" }]);
+  });
+
+  it("resets the accent color override to the theme default", async () => {
+    const editor = await mountEditor({
+      ...base,
+      color_style: "override",
+      accent_color: "#2f7d54",
+    });
+    let emitted: DeluxeRoomCardConfig | undefined;
+    editor.addEventListener("config-changed", (ev) => {
+      emitted = (ev as CustomEvent).detail.config;
+    });
+    const accentReset =
+      editor.shadowRoot?.querySelectorAll<HTMLElement>(".color-reset")[0];
+    expect(accentReset).toBeTruthy();
+    accentReset?.click();
+    expect(emitted?.accent_color).toBeUndefined();
+  });
+
+  it("shows override color rows only for color_style override", async () => {
+    const themed = await mountEditor({ ...base, color_style: "theme" });
+    // No top-level color rows in theme mode (item rows are collapsed).
+    expect(themed.shadowRoot?.querySelectorAll(".color-row")).toHaveLength(0);
+    const override = await mountEditor({ ...base, color_style: "override" });
+    expect(
+      override.shadowRoot?.querySelectorAll(".color-row").length,
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("collapses climate thresholds into expandable schema blocks", async () => {
