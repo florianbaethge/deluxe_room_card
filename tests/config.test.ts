@@ -196,8 +196,10 @@ describe("deriveFromArea", () => {
 
   it("resolves the area via the device registry too", () => {
     const imported = deriveFromArea(hass, "wz");
+    // Door sensors are imported as generic contact openings (window field);
+    // door-ness comes from the device_class at render time.
     expect(
-      imported.openings.some((o) => o.door === "binary_sensor.wz_door"),
+      imported.openings.some((o) => o.window === "binary_sensor.wz_door"),
     ).toBe(true);
   });
 

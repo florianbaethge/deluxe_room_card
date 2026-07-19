@@ -155,6 +155,19 @@ describe("openingView", () => {
     expect(view.coverClosed).toBe(true);
   });
 
+  it("auto-detects doors from the contact entity's device_class", () => {
+    const door = [
+      entity("binary_sensor.front", "on", { device_class: "door" }),
+    ];
+    const view = openingView(
+      { window: "binary_sensor.front" },
+      getState(door),
+      "label",
+      0,
+    );
+    expect(view.isDoor).toBe(true);
+  });
+
   it("prefers control_entity as the action target", () => {
     const view = openingView(
       {

@@ -138,11 +138,15 @@ export function openingView(
   const windowState = contactId ? windowStateOf(contact) : null;
   const position = item.cover ? coverPositionOf(cover) : null;
   const hasCover = item.cover !== undefined;
+  // A single contact sensor covers both windows and doors; door-ness is taken
+  // from the item's device_class or, failing that, the entity's own class.
+  const DOOR_CLASSES = ["door", "garage_door", "garage", "gate"];
+  const contactClass = contact?.attributes["device_class"] as
+    string | undefined;
   const isDoor =
     item.door !== undefined ||
-    item.device_class === "door" ||
-    item.device_class === "garage_door" ||
-    item.device_class === "gate";
+    DOOR_CLASSES.includes(item.device_class ?? "") ||
+    DOOR_CLASSES.includes(contactClass ?? "");
 
   const friendly =
     (contact?.attributes["friendly_name"] as string | undefined) ??

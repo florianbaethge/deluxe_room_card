@@ -157,10 +157,13 @@ export function deriveFromArea(
           : { cover: id, name },
       );
     } else if (domain === "binary_sensor") {
-      if (deviceClass === "window") {
+      if (
+        deviceClass === "window" ||
+        deviceClass === "door" ||
+        deviceClass === "garage_door"
+      ) {
+        // One generic contact field; door-ness comes from the device_class.
         result.openings.push({ window: id, name });
-      } else if (deviceClass === "door" || deviceClass === "garage_door") {
-        result.openings.push({ door: id, name });
       } else if (
         deviceClass &&
         ["moisture", "smoke", "gas", "carbon_monoxide", "safety"].includes(

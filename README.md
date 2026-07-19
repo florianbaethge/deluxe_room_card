@@ -158,9 +158,12 @@ chip (label/color), a bar, a radial ring or the compact combined box.
 
 Each item combines up to three entities into **one chip**:
 
+One item is one chip. A chip can be a plain contact (window **or** door), a
+plain cover, or a window/door **combined** with a cover.
+
 | Option | Type | Description |
 | --- | --- | --- |
-| `window` / `door` | entity | Contact sensor (`on`/`off`, or `open`/`tilted`/`closed` for template sensors) |
+| `window` | entity | Contact sensor for a window **or** door (`on`/`off`, or `open`/`tilted`/`closed`). Door icons are picked automatically from the entity's `device_class` |
 | `cover` | entity | Cover — provides the 0–100 % position |
 | `control_entity` | entity | Alternate target for `toggle`/`call-service` taps (e.g. a "quiet mode" cover) |
 | `state_style` | string | Per-item style; falls back to the section default |
@@ -168,7 +171,10 @@ Each item combines up to three entities into **one chip**:
 | `name` / `icon` | string | Overrides |
 | `tap_action` | string | `more-info` (default) \| `toggle` \| `call-service` \| `none` |
 | `service` / `service_data` | – | For `tap_action: call-service` (e.g. `cover.close_cover`) |
-| `device_class` | string | `door` renders door icons |
+| `device_class` | string | Force `door` icons when the entity has no matching device_class |
+
+For a door status without a cover, just add a second opening with only its
+contact sensor.
 
 ```yaml
 openings:
@@ -180,7 +186,7 @@ openings:
       control_entity: cover.bedroom_shutter_quiet
       name: Window
       tap_action: more-info
-    - door: binary_sensor.patio_door
+    - window: binary_sensor.patio_door   # a door contact — icon is automatic
       name: Patio door
       state_style: label     # this one overrides the section style
       show_value: true       # …and shows its state text

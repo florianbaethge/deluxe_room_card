@@ -237,10 +237,11 @@ export class DeluxeRoomCardEditor extends LitElement {
   private _openingSchema(): HaFormSchema[] {
     return [
       {
+        // One contact sensor for windows and doors alike; door icons are
+        // picked automatically from the entity's device_class.
         name: "window",
         selector: { entity: { domain: ["binary_sensor", "sensor"] } },
       },
-      { name: "door", selector: { entity: { domain: "binary_sensor" } } },
       { name: "cover", selector: { entity: { domain: "cover" } } },
       { name: "control_entity", selector: { entity: {} } },
       {
@@ -391,8 +392,7 @@ export class DeluxeRoomCardEditor extends LitElement {
       high: this._t("threshold_high"),
       high_crit: this._t("threshold_high_crit"),
       alert_on_threshold: this._t("alert_on_threshold"),
-      window: this._t("window_sensor"),
-      door: this._t("door_sensor"),
+      window: this._t("contact_sensor"),
       cover: this._t("cover_entity"),
       control_entity: this._t("control_entity"),
       name: this._t("name"),
@@ -1092,22 +1092,30 @@ export class DeluxeRoomCardEditor extends LitElement {
       box-sizing: border-box;
     }
     .section-body {
-      padding: 2px 10px 12px;
+      padding: 4px 12px 16px;
     }
     .list {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 12px;
     }
     .list-item {
       border: 1px solid var(--divider-color, #e0e0e0);
       border-radius: 10px;
-      padding: 6px 10px 10px;
+      padding: 8px 12px 14px;
     }
     .list-head {
       display: flex;
       align-items: center;
       gap: 2px;
+    }
+    /* Breathing room between the item form and the actions below it. */
+    .list-item ha-form {
+      margin-top: 8px;
+    }
+    .list-item mwc-button,
+    .list mwc-button {
+      margin-top: 8px;
     }
     .list-title {
       flex: 1;
@@ -1132,8 +1140,8 @@ export class DeluxeRoomCardEditor extends LitElement {
       --mdc-icon-size: 18px;
     }
     .condition {
-      margin: 8px 0 0 12px;
-      padding: 8px 10px;
+      margin: 12px 0 0 12px;
+      padding: 10px 12px 12px;
       border-left: 3px solid var(--primary-color, #2f7d54);
       background: color-mix(
         in srgb,
@@ -1148,6 +1156,7 @@ export class DeluxeRoomCardEditor extends LitElement {
       justify-content: space-between;
       font-weight: 500;
       font-size: 13px;
+      margin-bottom: 2px;
     }
     .area-import {
       display: flex;

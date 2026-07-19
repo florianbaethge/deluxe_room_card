@@ -515,19 +515,6 @@ export class DeluxeRoomCard extends LitElement {
     }
   }
 
-  private _windowBadgeIcon(view: OpeningView): string {
-    if (view.isDoor)
-      return view.windowState === "open" ? "mdi:door-open" : "mdi:door-closed";
-    switch (view.windowState) {
-      case "open":
-        return "mdi:window-open-variant";
-      case "tilted":
-        return "mdi:window-open";
-      default:
-        return "mdi:window-closed-variant";
-    }
-  }
-
   private _renderOpeningChip(view: OpeningView): TemplateResult {
     const t = (key: string): string => this._t(key);
     const stateWord =
@@ -617,16 +604,6 @@ export class DeluxeRoomCard extends LitElement {
                   ${
                     showSub
                       ? html`<span class="chip-sub">
-                          ${
-                            view.hasCover &&
-                            view.windowState !== null &&
-                            view.style !== "combined"
-                              ? html`<ha-icon
-                                  class="win-badge win-badge-${view.windowState}"
-                                  .icon=${this._windowBadgeIcon(view)}
-                                ></ha-icon>`
-                              : nothing
-                          }
                           ${view.missing ? t("entity_missing") : sub}
                         </span>`
                       : nothing
@@ -809,15 +786,15 @@ export class DeluxeRoomCard extends LitElement {
       border-radius: 50%;
       background: var(--drc-accent);
       opacity: 0.18;
-      z-index: 1;
+      z-index: 0;
     }
     .room-icon {
       position: absolute;
       left: 20px;
       bottom: 16px;
-      z-index: 1;
+      z-index: 0;
       color: var(--drc-secondary);
-      opacity: 0.9;
+      opacity: 0.55;
       --mdc-icon-size: calc(80px * var(--drc-scale));
     }
     .inline-icon {
@@ -977,19 +954,6 @@ export class DeluxeRoomCard extends LitElement {
       align-items: center;
       gap: 4px;
     }
-    .win-badge {
-      --mdc-icon-size: 14px;
-    }
-    .win-badge-open {
-      color: var(--drc-open);
-    }
-    .win-badge-tilted {
-      color: var(--drc-tilted);
-    }
-    .win-badge-closed {
-      color: var(--drc-closed);
-    }
-
     /* Window-only chips: state color as background */
     .chip:not(.has-cover).win-open {
       background: var(--drc-critical);
@@ -1298,13 +1262,14 @@ export class DeluxeRoomCard extends LitElement {
     ha-card.narrow .room-icon {
       left: 15px;
       bottom: 12px;
-      --mdc-icon-size: calc(62px * var(--drc-scale));
+      opacity: 0.4;
+      --mdc-icon-size: calc(56px * var(--drc-scale));
     }
     ha-card.narrow .backdrop {
-      width: calc(150px * var(--drc-scale));
-      height: calc(150px * var(--drc-scale));
-      left: calc(-26px - (150px * var(--drc-scale) - 150px) / 2);
-      bottom: calc(-34px - (150px * var(--drc-scale) - 150px) / 2);
+      width: calc(140px * var(--drc-scale));
+      height: calc(140px * var(--drc-scale));
+      left: calc(-30px - (140px * var(--drc-scale) - 140px) / 2);
+      bottom: calc(-38px - (140px * var(--drc-scale) - 140px) / 2);
     }
     ha-card.narrow .alert-bar {
       padding: 8px 13px;
