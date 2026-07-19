@@ -242,6 +242,36 @@ describe("rendering", () => {
     expect(hidden.shadowRoot?.querySelector(".bar-track")).toBeTruthy();
   });
 
+  it("stacks name over the bar and value below in bar style", async () => {
+    const hass = makeHass([
+      entity("binary_sensor.win", "off"),
+      entity("cover.blind", "open", { current_position: 60 }),
+    ]);
+    const card = await mountCard(
+      {
+        ...base,
+        openings: {
+          state_style: "bar",
+          items: [
+            { window: "binary_sensor.win", cover: "cover.blind", name: "Left" },
+          ],
+        },
+      },
+      hass,
+    );
+    const block = card.shadowRoot?.querySelector(".bar-block");
+    expect(block).toBeTruthy();
+    expect(block?.querySelector(".bar-name")?.textContent?.trim()).toBe("Left");
+    expect(block?.querySelector(".bar-value")?.textContent?.trim()).toBe(
+      "60 %",
+    );
+    // Bar sits between the name and the value.
+    const kids = Array.from(block?.children ?? []).map((el) => el.className);
+    expect(kids).toEqual(["bar-name", "bar-track", "bar-value"]);
+    // No horizontal chip-text block in bar style.
+    expect(card.shadowRoot?.querySelector(".chip-bar .chip-text")).toBeNull();
+  });
+
   it("hides the name when show_name is false", async () => {
     const hass = makeHass([entity("binary_sensor.win", "off")]);
     const card = await mountCard(

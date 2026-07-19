@@ -564,9 +564,11 @@ export class DeluxeRoomCard extends LitElement {
 
     const pct = view.position ?? 0;
     const isRadial = view.style === "radial" && view.hasCover;
-    // The radial ring already encodes the value, so no duplicate percent text.
-    const showSub = !isRadial && (view.showValue || view.missing);
-    const showText = view.showName || showSub;
+    const isBar = view.style === "bar" && view.hasCover;
+    // The radial ring / bar column carry their own value, so no side text.
+    const showSub = !isRadial && !isBar && (view.showValue || view.missing);
+    const showText = !isBar && (view.showName || showSub);
+    const barValue = view.missing ? t("entity_missing") : sub;
 
     return html`
       <button
@@ -593,6 +595,30 @@ export class DeluxeRoomCard extends LitElement {
               : nothing
         }
         ${
+          isBar
+            ? html`
+                <span class="bar-block">
+                  ${
+                    view.showName
+                      ? html`<span class="bar-name">${view.name}</span>`
+                      : nothing
+                  }
+                  <span class="bar-track"
+                    ><span
+                      class="bar-fill"
+                      style=${styleMap({ width: `${pct}%` })}
+                    ></span
+                  ></span>
+                  ${
+                    view.showValue || view.missing
+                      ? html`<span class="bar-value">${barValue}</span>`
+                      : nothing
+                  }
+                </span>
+              `
+            : nothing
+        }
+        ${
           showText
             ? html`
                 <span class="chip-text">
@@ -613,16 +639,6 @@ export class DeluxeRoomCard extends LitElement {
             : nothing
         }
         ${isRadial ? this._renderRadial(pct, view.showValue) : nothing}
-        ${
-          view.style === "bar" && view.hasCover
-            ? html`<span class="bar-track"
-                ><span
-                  class="bar-fill"
-                  style=${styleMap({ width: `${pct}%` })}
-                ></span
-              ></span>`
-            : nothing
-        }
       </button>
     `;
   }
@@ -1000,6 +1016,11 @@ export class DeluxeRoomCard extends LitElement {
       background: color-mix(in srgb, var(--drc-text) 8%, transparent);
       color: var(--drc-text);
     }
+    /* Bar chips size to their compact content, not the 118px chip default. */
+    .chip.chip-bar {
+      min-width: 0;
+      gap: 8px;
+    }
     /* Compact, neutral cover-position box — the state color lives on the
        chip outline now, not on this box. */
     .combined-box {
@@ -1022,6 +1043,29 @@ export class DeluxeRoomCard extends LitElement {
       background: color-mix(in srgb, var(--drc-secondary) 65%, transparent);
     }
 
+    /* Bar style: name over the bar, value below — a compact vertical stack. */
+    .bar-block {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1px;
+      min-width: 58px;
+      flex: 1 1 auto;
+    }
+    .bar-name {
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bar-value {
+      font-size: 9.5px;
+      font-weight: 500;
+      line-height: 1.05;
+      opacity: 0.8;
+    }
     .bar-track {
       width: 52px;
       height: 8px;
@@ -1029,6 +1073,11 @@ export class DeluxeRoomCard extends LitElement {
       background: rgba(0, 0, 0, 0.35);
       overflow: hidden;
       flex-shrink: 0;
+    }
+    .bar-block .bar-track {
+      width: auto;
+      height: 6px;
+      margin: 1px 0;
     }
     .bar-fill {
       display: block;
@@ -1235,9 +1284,14 @@ export class DeluxeRoomCard extends LitElement {
       width: 22px;
       height: 22px;
     }
-    ha-card.narrow .bar-track {
-      width: 36px;
-      height: 7px;
+    ha-card.narrow .bar-block {
+      min-width: 48px;
+    }
+    ha-card.narrow .bar-name {
+      font-size: 10px;
+    }
+    ha-card.narrow .bar-value {
+      font-size: 9px;
     }
     ha-card.narrow .radial,
     ha-card.narrow .radial svg {
