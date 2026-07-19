@@ -333,6 +333,38 @@ describe("editor", () => {
     expect(emitted?.openings?.items?.[0].state_style).toBeUndefined();
   });
 
+  it("stores only non-default opening display flags", async () => {
+    const editor = await mountEditor({
+      ...base,
+      openings: { items: [{ window: "binary_sensor.win" }] },
+    });
+    let emitted: DeluxeRoomCardConfig | undefined;
+    editor.addEventListener("config-changed", (ev) => {
+      emitted = (ev as CustomEvent).detail.config;
+    });
+    await openFirstRow(editor, "Openings");
+    const itemForm = editor.shadowRoot?.querySelector(".list-item > ha-form");
+    // Turning show_value off is stored; the default-true flags are dropped.
+    itemForm?.dispatchEvent(
+      new CustomEvent("value-changed", {
+        detail: {
+          value: {
+            window: "binary_sensor.win",
+            show_name: true,
+            show_value: false,
+            show_icon: true,
+          },
+        },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    expect(emitted?.openings?.items?.[0]).toEqual({
+      window: "binary_sensor.win",
+      show_value: false,
+    });
+  });
+
   it("collapses climate thresholds into expandable schema blocks", async () => {
     const editor = await mountEditor();
     const schema = (

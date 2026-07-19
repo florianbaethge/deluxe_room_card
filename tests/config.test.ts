@@ -73,6 +73,14 @@ describe("normalizeConfig", () => {
     expect(normalizeConfig({ ...base, icon_size: 5 }).icon_size).toBe(1.8);
     expect(normalizeConfig({ ...base, icon_size: 0.1 }).icon_size).toBe(0.6);
   });
+
+  it("preserves opening display flags", () => {
+    const config = normalizeConfig({
+      ...base,
+      openings: { state_style: "bar", show_value: false, items: [] },
+    });
+    expect(config.openings?.show_value).toBe(false);
+  });
 });
 
 describe("relevantEntities", () => {

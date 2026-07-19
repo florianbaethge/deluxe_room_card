@@ -108,6 +108,15 @@ export interface OpeningView {
   tapAction: NonNullable<OpeningItem["tap_action"]>;
   service?: string;
   serviceData?: Record<string, unknown>;
+  showName: boolean;
+  showValue: boolean;
+  showIcon: boolean;
+}
+
+export interface OpeningDisplay {
+  showName?: boolean;
+  showValue?: boolean;
+  showIcon?: boolean;
 }
 
 /** Build the view model for one opening chip. */
@@ -116,6 +125,7 @@ export function openingView(
   getState: GetState,
   style: StateStyle,
   index: number,
+  display?: OpeningDisplay,
 ): OpeningView {
   const contactId = item.window ?? item.door;
   const contact = contactId ? getState(contactId) : undefined;
@@ -154,6 +164,9 @@ export function openingView(
     tapAction: item.tap_action ?? "more-info",
     service: item.service,
     serviceData: item.service_data,
+    showName: display?.showName ?? true,
+    showValue: display?.showValue ?? true,
+    showIcon: display?.showIcon ?? true,
   };
 }
 
@@ -216,7 +229,9 @@ export function activeAlerts(
         icon: item.icon ?? SEVERITY_ICONS[severity],
         severity,
         color: item.color,
-        fullWidth: item.full_width ?? false,
+        // Alerts default to a prominent full-width bar; opt into a compact
+        // chip with full_width: false.
+        fullWidth: item.full_width ?? true,
       };
     });
 }

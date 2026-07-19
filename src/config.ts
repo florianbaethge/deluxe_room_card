@@ -29,6 +29,7 @@ export function normalizeConfig(
     ...DEFAULT_CONFIG,
     ...raw,
     openings: {
+      ...raw.openings,
       state_style: (raw.openings?.state_style ??
         DEFAULT_CONFIG.state_style) as StateStyle,
       items: raw.openings?.items ?? [],

@@ -88,6 +88,12 @@ export interface OpeningItem {
   icon?: string;
   /** Per-opening display style; falls back to openings.state_style. */
   state_style?: StateStyle;
+  /** Show the name label (default true; falls back to openings.show_name). */
+  show_name?: boolean;
+  /** Show the value/state text, e.g. "70 %" (default true). */
+  show_value?: boolean;
+  /** Show the leading icon (default true; ignored for the combined box). */
+  show_icon?: boolean;
   tap_action?: TapAction;
   /** `domain.service` for tap_action: call-service. */
   service?: string;
@@ -98,6 +104,10 @@ export interface OpeningItem {
 export interface OpeningsConfig {
   /** Default display style for all openings; overridable per item. */
   state_style?: StateStyle;
+  /** Default for showing name / value / icon; overridable per item. */
+  show_name?: boolean;
+  show_value?: boolean;
+  show_icon?: boolean;
   items?: OpeningItem[];
 }
 

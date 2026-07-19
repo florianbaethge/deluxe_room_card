@@ -480,14 +480,18 @@ export class DeluxeRoomCard extends LitElement {
   /* ---------------------------------------------------------- openings --- */
 
   private _renderOpenings(): TemplateResult[] {
-    const config = this._config!;
-    const defaultStyle = (config.openings?.state_style ??
-      "label") as StateStyle;
-    return (config.openings?.items ?? []).map((item, index) => {
-      // Per-opening override wins over the section default.
+    const o = this._config!.openings;
+    const defaultStyle = (o?.state_style ?? "label") as StateStyle;
+    return (o?.items ?? []).map((item, index) => {
+      // Per-opening overrides win over the section defaults.
       const style = (item.state_style ?? defaultStyle) as StateStyle;
+      const display = {
+        showName: item.show_name ?? o?.show_name ?? true,
+        showValue: item.show_value ?? o?.show_value ?? true,
+        showIcon: item.show_icon ?? o?.show_icon ?? true,
+      };
       return this._renderOpeningChip(
-        openingView(item, this._getState, style, index),
+        openingView(item, this._getState, style, index, display),
       );
     });
   }
@@ -572,6 +576,10 @@ export class DeluxeRoomCard extends LitElement {
     };
 
     const pct = view.position ?? 0;
+    const isRadial = view.style === "radial" && view.hasCover;
+    // The radial ring already encodes the value, so no duplicate percent text.
+    const showSub = !isRadial && (view.showValue || view.missing);
+    const showText = view.showName || showSub;
 
     return html`
       <button
@@ -583,42 +591,51 @@ export class DeluxeRoomCard extends LitElement {
           view.style === "combined" &&
           (view.hasCover || view.windowState !== null)
             ? html`
-                <span
-                  class="combined-box win-frame-${view.windowState ?? "none"}"
-                >
+                <span class="combined-box">
                   <span
                     class="combined-shade"
                     style=${styleMap({ height: `${100 - pct}%` })}
                   ></span>
                 </span>
               `
-            : html`<ha-icon
-                class="chip-icon"
-                .icon=${this._openingIcon(view)}
-              ></ha-icon>`
+            : view.showIcon
+              ? html`<ha-icon
+                  class="chip-icon"
+                  .icon=${this._openingIcon(view)}
+                ></ha-icon>`
+              : nothing
         }
         ${
-          view.style === "radial" && view.hasCover
-            ? this._renderRadial(pct)
-            : html`
+          showText
+            ? html`
                 <span class="chip-text">
-                  <span class="chip-title">${view.name}</span>
-                  <span class="chip-sub">
-                    ${
-                      view.hasCover &&
-                      view.windowState !== null &&
-                      view.style !== "combined"
-                        ? html`<ha-icon
-                            class="win-badge win-badge-${view.windowState}"
-                            .icon=${this._windowBadgeIcon(view)}
-                          ></ha-icon>`
-                        : nothing
-                    }
-                    ${view.missing ? t("entity_missing") : sub}
-                  </span>
+                  ${
+                    view.showName
+                      ? html`<span class="chip-title">${view.name}</span>`
+                      : nothing
+                  }
+                  ${
+                    showSub
+                      ? html`<span class="chip-sub">
+                          ${
+                            view.hasCover &&
+                            view.windowState !== null &&
+                            view.style !== "combined"
+                              ? html`<ha-icon
+                                  class="win-badge win-badge-${view.windowState}"
+                                  .icon=${this._windowBadgeIcon(view)}
+                                ></ha-icon>`
+                              : nothing
+                          }
+                          ${view.missing ? t("entity_missing") : sub}
+                        </span>`
+                      : nothing
+                  }
                 </span>
               `
+            : nothing
         }
+        ${isRadial ? this._renderRadial(pct, view.showValue) : nothing}
         ${
           view.style === "bar" && view.hasCover
             ? html`<span class="bar-track"
@@ -633,7 +650,7 @@ export class DeluxeRoomCard extends LitElement {
     `;
   }
 
-  private _renderRadial(pct: number): TemplateResult {
+  private _renderRadial(pct: number, showLabel: boolean): TemplateResult {
     const dash = ((pct / 100) * RADIAL_CIRCUMFERENCE).toFixed(1);
     return html`
       <span class="radial">
@@ -647,7 +664,11 @@ export class DeluxeRoomCard extends LitElement {
             stroke-dasharray="${dash} ${RADIAL_CIRCUMFERENCE.toFixed(1)}"
           ></circle>
         </svg>
-        <span class="radial-label">${Math.round(pct)}</span>
+        ${
+          showLabel
+            ? html`<span class="radial-label">${Math.round(pct)}</span>`
+            : nothing
+        }
       </span>
     `;
   }
@@ -986,15 +1007,25 @@ export class DeluxeRoomCard extends LitElement {
       background: color-mix(in srgb, var(--drc-text) 10%, transparent);
       color: var(--drc-text);
     }
-    /* Contact frame around cover chips */
+    /* Contact frame around cover chips: a bold, glowing outline in the
+       window-state color — reads clearly even over a filled (blue) chip. */
     .chip.has-cover.win-open {
-      border-color: var(--drc-open);
+      --chip-frame: var(--drc-open);
     }
     .chip.has-cover.win-tilted {
-      border-color: var(--drc-tilted);
+      --chip-frame: var(--drc-tilted);
     }
     .chip.has-cover.win-closed {
-      border-color: var(--drc-closed);
+      --chip-frame: var(--drc-closed);
+    }
+    .chip.has-cover.win-open,
+    .chip.has-cover.win-tilted,
+    .chip.has-cover.win-closed {
+      border-color: var(--chip-frame);
+      border-width: 3px;
+      box-shadow:
+        0 0 0 1px var(--chip-frame),
+        0 0 10px -3px var(--chip-frame);
     }
     .chip.missing {
       background: color-mix(in srgb, var(--drc-warning) 25%, transparent);
@@ -1004,30 +1035,20 @@ export class DeluxeRoomCard extends LitElement {
     .chip.chip-combined {
       background: color-mix(in srgb, var(--drc-text) 8%, transparent);
       color: var(--drc-text);
-      border-color: transparent;
     }
+    /* Compact, neutral cover-position box — the state color lives on the
+       chip outline now, not on this box. */
     .combined-box {
       position: relative;
-      width: 34px;
-      height: 34px;
-      /* Thick frame so the window-state color reads clearly, even when a
-         closed window's green rim sits on a busy background. */
-      border: 4px solid var(--drc-secondary);
-      border-radius: 6px;
+      width: 24px;
+      height: 24px;
+      border: 1.5px solid color-mix(in srgb, var(--drc-text) 30%, transparent);
+      border-radius: 5px;
       overflow: hidden;
-      background: color-mix(in srgb, var(--drc-accent) 18%, transparent);
+      background: color-mix(in srgb, var(--drc-accent) 22%, transparent);
       flex-shrink: 0;
       display: inline-block;
       box-sizing: border-box;
-    }
-    .combined-box.win-frame-open {
-      border-color: var(--drc-open);
-    }
-    .combined-box.win-frame-tilted {
-      border-color: var(--drc-tilted);
-    }
-    .combined-box.win-frame-closed {
-      border-color: var(--drc-closed);
     }
     .combined-shade {
       position: absolute;
@@ -1209,7 +1230,7 @@ export class DeluxeRoomCard extends LitElement {
       gap: 10px;
     }
     ha-card.narrow .title {
-      font-size: 18px;
+      font-size: 16px;
     }
     /* Guarantee the title a fair share so a normal room name is not clipped
        to "Wohnzi…" by wide chips sitting on the same row. */
@@ -1247,9 +1268,8 @@ export class DeluxeRoomCard extends LitElement {
       font-size: 11px;
     }
     ha-card.narrow .combined-box {
-      width: 26px;
-      height: 26px;
-      border-width: 3.5px;
+      width: 22px;
+      height: 22px;
     }
     ha-card.narrow .bar-track {
       width: 36px;

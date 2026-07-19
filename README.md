@@ -147,7 +147,14 @@ Missing or `unavailable` values render as a clear message, never `NaN`.
 
 ### `openings`
 
-`state_style`: `combined` \| `label` \| `bar` \| `radial` \| `color`
+`state_style` (section default): `combined` \| `label` \| `bar` \| `radial`
+\| `color`. `show_name` / `show_value` / `show_icon` set section-wide display
+defaults (all `true`). Every item may override the style and each display
+flag individually.
+
+The window-state (green = closed, amber = tilted, red = open) shows as a
+bold, glowing outline around the whole chip; the cover position fills the
+chip (label/color), a bar, a radial ring or the compact combined box.
 
 Each item combines up to three entities into **one chip**:
 
@@ -156,6 +163,8 @@ Each item combines up to three entities into **one chip**:
 | `window` / `door` | entity | Contact sensor (`on`/`off`, or `open`/`tilted`/`closed` for template sensors) |
 | `cover` | entity | Cover — provides the 0–100 % position |
 | `control_entity` | entity | Alternate target for `toggle`/`call-service` taps (e.g. a "quiet mode" cover) |
+| `state_style` | string | Per-item style; falls back to the section default |
+| `show_name` / `show_value` / `show_icon` | bool | Per-item display toggles (default `true`) |
 | `name` / `icon` | string | Overrides |
 | `tap_action` | string | `more-info` (default) \| `toggle` \| `call-service` \| `none` |
 | `service` / `service_data` | – | For `tap_action: call-service` (e.g. `cover.close_cover`) |
@@ -164,6 +173,7 @@ Each item combines up to three entities into **one chip**:
 ```yaml
 openings:
   state_style: combined
+  show_value: false          # section default: hide the % / state text
   items:
     - window: binary_sensor.bedroom_window
       cover: cover.bedroom_shutter
@@ -172,6 +182,8 @@ openings:
       tap_action: more-info
     - door: binary_sensor.patio_door
       name: Patio door
+      state_style: label     # this one overrides the section style
+      show_value: true       # …and shows its state text
 ```
 
 ### `controls`
@@ -196,7 +208,8 @@ alerts:
     label: Water leak detected!
     icon: mdi:water-alert
     severity: critical      # info | warning | critical
-    full_width: true        # bar at the bottom instead of a chip
+    # full_width defaults to true (a bar spanning the tile, below the
+    # openings). Set full_width: false for a compact inline chip instead.
   - entity: sensor.window_sensor_battery
     below: 15               # numeric threshold instead of a state match
     label: Battery low · window sensor

@@ -61,6 +61,10 @@ interface ListSection<T> {
   colorField?: boolean;
   /** Map a config item to ha-form data (e.g. fill "default" enum values). */
   formData?: (item: T) => Record<string, unknown>;
+  /** Clean a stored item (e.g. drop default-true flags to keep YAML lean). */
+  normalizeItem?: (item: Record<string, unknown>) => Record<string, unknown>;
+  /** Field-label override for this section's item form. */
+  computeLabel?: (schema: { name: string }) => string;
 }
 
 @customElement("deluxe-room-card-editor")
@@ -260,6 +264,15 @@ export class DeluxeRoomCardEditor extends LitElement {
             ["call-service", "action_call_service"],
             ["none", "action_none"],
           ]),
+        ],
+      },
+      {
+        name: "",
+        type: "grid",
+        schema: [
+          { name: "show_name", selector: { boolean: {} } },
+          { name: "show_value", selector: { boolean: {} } },
+          { name: "show_icon", selector: { boolean: {} } },
         ],
       },
     ];
@@ -598,8 +611,30 @@ export class DeluxeRoomCardEditor extends LitElement {
         item.door ??
         item.cover ??
         this._t("opening"),
-      // Show the "(default)" option when no per-item style is set.
-      formData: (item) => ({ ...item, state_style: item.state_style ?? "" }),
+      // Show the "(default)" option / default-on toggles for empty items.
+      formData: (item) => ({
+        ...item,
+        state_style: item.state_style ?? "",
+        show_name: item.show_name ?? true,
+        show_value: item.show_value ?? true,
+        show_icon: item.show_icon ?? true,
+      }),
+      // Drop flags that equal their default so the YAML stays minimal.
+      normalizeItem: (item) => {
+        const next = { ...item };
+        for (const key of ["show_name", "show_value", "show_icon"]) {
+          if (next[key] === true) delete next[key];
+        }
+        return next;
+      },
+      computeLabel: (schema) => {
+        const labels: Record<string, string> = {
+          show_name: this._t("show_name"),
+          show_value: this._t("show_value"),
+          show_icon: this._t("show_opening_icon"),
+        };
+        return labels[schema.name] ?? this._computeLabel(schema);
+      },
     };
   }
 
@@ -685,7 +720,9 @@ export class DeluxeRoomCardEditor extends LitElement {
                             : (item as Record<string, unknown>)
                         }
                         .schema=${section.schema(item)}
-                        .computeLabel=${this._computeLabel}
+                        .computeLabel=${
+                          section.computeLabel ?? this._computeLabel
+                        }
                         @value-changed=${(ev: CustomEvent) =>
                           this._itemChanged(section, index, ev)}
                       ></ha-form>
@@ -775,7 +812,9 @@ export class DeluxeRoomCardEditor extends LitElement {
       ...(items[index] as Record<string, unknown>),
       ...(ev.detail.value as Record<string, unknown>),
     };
-    items[index] = pruneEmpty(merged) as T;
+    let next = pruneEmpty(merged);
+    if (section.normalizeItem) next = section.normalizeItem(next);
+    items[index] = next as T;
     this._writeSection(section, items);
   }
 
@@ -785,11 +824,13 @@ export class DeluxeRoomCardEditor extends LitElement {
     hex: string | undefined,
   ): void {
     const items = [...section.items];
-    const merged = {
+    const merged: Record<string, unknown> = {
       ...(items[index] as Record<string, unknown>),
       color: hex,
     };
-    items[index] = pruneEmpty(merged) as T;
+    let next = pruneEmpty(merged);
+    if (section.normalizeItem) next = section.normalizeItem(next);
+    items[index] = next as T;
     this._writeSection(section, items);
   }
 

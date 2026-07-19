@@ -209,6 +209,92 @@ describe("rendering", () => {
     }
   });
 
+  it("hides the value text when show_value is false", async () => {
+    const hass = makeHass([
+      entity("binary_sensor.win", "off"),
+      entity("cover.blind", "open", { current_position: 60 }),
+    ]);
+    const withValue = await mountCard(
+      {
+        ...base,
+        openings: {
+          state_style: "bar",
+          items: [{ window: "binary_sensor.win", cover: "cover.blind" }],
+        },
+      },
+      hass,
+    );
+    expect(shadowText(withValue)).toContain("60 %");
+
+    const hidden = await mountCard(
+      {
+        ...base,
+        openings: {
+          state_style: "bar",
+          show_value: false,
+          items: [{ window: "binary_sensor.win", cover: "cover.blind" }],
+        },
+      },
+      hass,
+    );
+    expect(shadowText(hidden)).not.toContain("60 %");
+    // The bar itself still renders.
+    expect(hidden.shadowRoot?.querySelector(".bar-track")).toBeTruthy();
+  });
+
+  it("hides the name when show_name is false", async () => {
+    const hass = makeHass([entity("binary_sensor.win", "off")]);
+    const card = await mountCard(
+      {
+        ...base,
+        openings: {
+          items: [
+            { window: "binary_sensor.win", name: "Fenster", show_name: false },
+          ],
+        },
+      },
+      hass,
+    );
+    expect(shadowText(card)).not.toContain("Fenster");
+  });
+
+  it("renders the combined box without a colored frame class", async () => {
+    const hass = makeHass([
+      entity("binary_sensor.win", "off"),
+      entity("cover.blind", "open", { current_position: 60 }),
+    ]);
+    const card = await mountCard(
+      {
+        ...base,
+        openings: {
+          state_style: "combined",
+          items: [{ window: "binary_sensor.win", cover: "cover.blind" }],
+        },
+      },
+      hass,
+    );
+    const box = card.shadowRoot?.querySelector(".combined-box");
+    expect(box).toBeTruthy();
+    expect(box?.className).toBe("combined-box");
+    // The window-state color lives on the chip outline instead.
+    expect(
+      card.shadowRoot?.querySelector(".chip.has-cover.win-closed"),
+    ).toBeTruthy();
+  });
+
+  it("renders an active alert as a full-width bar by default", async () => {
+    const hass = makeHass([entity("binary_sensor.motion", "on")]);
+    const card = await mountCard(
+      {
+        ...base,
+        alerts: [{ entity: "binary_sensor.motion", label: "Motion!" }],
+      },
+      hass,
+    );
+    expect(card.shadowRoot?.querySelectorAll(".alert-bar")).toHaveLength(1);
+    expect(card.shadowRoot?.querySelectorAll(".alert-chip")).toHaveLength(0);
+  });
+
   it("honors a per-opening state_style over the section default", async () => {
     const hass = makeHass([
       entity("binary_sensor.win", "off"),

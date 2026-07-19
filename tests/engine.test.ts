@@ -170,6 +170,29 @@ describe("openingView", () => {
     expect(view.actionEntity).toBe("cover.blind_quiet");
     expect(view.moreInfoEntity).toBe("cover.blind");
   });
+
+  it("defaults display flags to true and honors overrides", () => {
+    const on = openingView(
+      { window: "binary_sensor.window" },
+      getState(states),
+      "label",
+      0,
+    );
+    expect(on.showName).toBe(true);
+    expect(on.showValue).toBe(true);
+    expect(on.showIcon).toBe(true);
+
+    const off = openingView(
+      { window: "binary_sensor.window" },
+      getState(states),
+      "label",
+      0,
+      { showValue: false, showIcon: false },
+    );
+    expect(off.showName).toBe(true);
+    expect(off.showValue).toBe(false);
+    expect(off.showIcon).toBe(false);
+  });
 });
 
 describe("alertActive", () => {
@@ -228,6 +251,20 @@ describe("activeAlerts", () => {
     expect(views[0].label).toBe("Leak sensor");
     expect(views[0].severity).toBe("critical");
     expect(views[0].fullWidth).toBe(true);
+  });
+
+  it("defaults alerts to full-width, opt out with full_width: false", () => {
+    const states = [entity("binary_sensor.a", "on")];
+    const [bar] = activeAlerts(
+      [{ entity: "binary_sensor.a" }],
+      getState(states),
+    );
+    expect(bar.fullWidth).toBe(true);
+    const [chip] = activeAlerts(
+      [{ entity: "binary_sensor.a", full_width: false }],
+      getState(states),
+    );
+    expect(chip.fullWidth).toBe(false);
   });
 });
 
