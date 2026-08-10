@@ -127,6 +127,13 @@ export interface AlertItem {
   active_state?: string;
   /** Invert the state match. */
   invert?: boolean;
+  /**
+   * Fire on availability instead of on a value: active while the entity is
+   * missing, unavailable, unknown or NaN — exactly the states that would
+   * otherwise render as an empty value. Takes precedence over
+   * active_state/below/above; combine with `invert` to alert while available.
+   */
+  unavailable?: boolean;
   /** Numeric thresholds — active when the value crosses them. */
   below?: number;
   above?: number;
@@ -146,6 +153,11 @@ export interface CardCondition {
   entity?: string;
   state?: string | string[];
   attribute?: string;
+  /**
+   * Match while the entity is missing/unavailable/unknown/NaN. Without it an
+   * unavailable entity never satisfies a condition.
+   */
+  unavailable?: boolean;
   above?: number;
   below?: number;
   /** Sun-based window, e.g. after: sunset. */

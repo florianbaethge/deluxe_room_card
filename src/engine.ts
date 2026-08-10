@@ -19,7 +19,34 @@ import type {
 
 export type GetState = (entityId: string) => HassEntity | undefined;
 
-const UNAVAILABLE_STATES = new Set(["unavailable", "unknown", "none", ""]);
+const UNAVAILABLE_STATES = new Set([
+  "unavailable",
+  "unknown",
+  "none",
+  "nan",
+  "",
+]);
+
+/** Whether a raw state/attribute counts as "no usable value". */
+function isBlank(raw: unknown): boolean {
+  if (raw === null || raw === undefined) return true;
+  return (
+    typeof raw === "string" && UNAVAILABLE_STATES.has(raw.trim().toLowerCase())
+  );
+}
+
+/**
+ * Whether an entity currently has no usable value — missing from hass, or
+ * unavailable/unknown/NaN. This is the condition behind the card's empty
+ * states, and what `unavailable: true` alerts and conditions match on.
+ */
+export function entityUnavailable(
+  entity: HassEntity | undefined,
+  attribute?: string,
+): boolean {
+  if (!entity) return true;
+  return isBlank(attribute ? entity.attributes[attribute] : entity.state);
+}
 
 /* ------------------------------------------------------------- numbers --- */
 
@@ -181,10 +208,16 @@ export function alertActive(
   item: AlertItem,
   entity: HassEntity | undefined,
 ): boolean {
+  // Availability alerts are the one kind that must survive a dead entity, so
+  // they are answered before the blank-state guard below.
+  if (item.unavailable) {
+    const blank = entityUnavailable(entity, item.attribute);
+    return item.invert ? !blank : blank;
+  }
+
   if (!entity) return false;
   const raw = item.attribute ? entity.attributes[item.attribute] : entity.state;
-  if (typeof raw === "string" && UNAVAILABLE_STATES.has(raw.toLowerCase()))
-    return false;
+  if (isBlank(raw)) return false;
 
   if (item.below !== undefined || item.above !== undefined) {
     const num = parseNumber(raw);
@@ -291,8 +324,16 @@ export function evalCondition(
 
   if (cond.entity === undefined) return { met: false };
   const entity = getState(cond.entity);
-  if (!entity) return { met: false };
-  if (UNAVAILABLE_STATES.has(entity.state.toLowerCase())) return { met: false };
+  const blank = entityUnavailable(entity, cond.attribute);
+
+  if (cond.unavailable) {
+    if (!blank) return { met: false };
+    // An unavailable entity has no value to compare, so the remaining
+    // state/numeric checks are skipped; `for:` still applies when hass still
+    // knows the entity (it keeps last_changed across the drop-out).
+    return holdSatisfied(cond, entity, now);
+  }
+  if (blank || !entity) return { met: false };
 
   let met = true;
   const raw = cond.attribute ? entity.attributes[cond.attribute] : entity.state;
@@ -310,19 +351,27 @@ export function evalCondition(
     }
   }
   if (!met) return { met: false };
+  return holdSatisfied(cond, entity, now);
+}
 
+/**
+ * Apply a condition's `for:` hold. Measured against last_changed, so it only
+ * tracks *state* changes (attribute-only conditions hold immediately once
+ * true). An entity hass no longer knows carries no timestamp, so the hold is
+ * skipped rather than blocking the condition forever.
+ */
+function holdSatisfied(
+  cond: CardCondition,
+  entity: HassEntity | undefined,
+  now: number,
+): ConditionResult {
   const forSeconds = parseDuration(cond.for);
-  if (forSeconds > 0) {
-    // `for` is measured against last_changed, so it only tracks *state*
-    // changes (attribute-only conditions hold immediately once true).
-    const changed = Date.parse(entity.last_changed);
-    if (Number.isFinite(changed)) {
-      const heldMs = now - changed;
-      const neededMs = forSeconds * 1000;
-      if (heldMs < neededMs)
-        return { met: false, recheckInMs: neededMs - heldMs };
-    }
-  }
+  if (forSeconds <= 0 || !entity) return { met: true };
+  const changed = Date.parse(entity.last_changed);
+  if (!Number.isFinite(changed)) return { met: true };
+  const heldMs = now - changed;
+  const neededMs = forSeconds * 1000;
+  if (heldMs < neededMs) return { met: false, recheckInMs: neededMs - heldMs };
   return { met: true };
 }
 
