@@ -310,6 +310,7 @@ export class DeluxeRoomCardEditor extends LitElement {
           { name: "icon", selector: { icon: {} } },
           { name: "active_state", selector: { text: {} } },
           { name: "invert", selector: { boolean: {} } },
+          { name: "unavailable", selector: { boolean: {} } },
           { name: "below", selector: { number: { mode: "box" } } },
           { name: "above", selector: { number: { mode: "box" } } },
           this._select("severity", [
@@ -351,6 +352,7 @@ export class DeluxeRoomCardEditor extends LitElement {
         schema: [
           { name: "state", selector: { text: {} } },
           { name: "attribute", selector: { text: {} } },
+          { name: "unavailable", selector: { boolean: {} } },
           { name: "above", selector: { number: { mode: "box" } } },
           { name: "below", selector: { number: { mode: "box" } } },
           this._select("after", [
@@ -402,6 +404,7 @@ export class DeluxeRoomCardEditor extends LitElement {
       color: this._t("color"),
       active_state: this._t("active_state"),
       invert: this._t("invert"),
+      unavailable: this._t("unavailable"),
       below: this._t("below"),
       above: this._t("above"),
       severity: this._t("severity"),

@@ -57,12 +57,15 @@ Same configuration in half and full width:
 - **Alerts**: any `binary_sensor`/`sensor` (or template helper) as a chip or a
   full-width bar at the bottom, with `info`/`warning`/`critical` severity,
   state matching (`active_state`, `invert`) or numeric thresholds
-  (`below`/`above`) — water leak, smoke, motion-while-armed, low battery …
+  (`below`/`above`) — water leak, smoke, motion-while-armed, low battery … plus
+  `unavailable: true` to flag an entity that dropped out entirely (a flaky cover
+  bridge, a sensor with a dead battery) instead of failing silently.
 - **Card outline rules**: automation-style conditions (AND/OR) put a warning
   or critical border + glow around the whole card — e.g. *red when a window
   is open after sunset*, or *amber when a window is open and the cover is
   below 50 %*. Supports entity state/attribute checks, numeric comparisons,
-  sun elevation (`after: sunset`) and hold durations (`for:`).
+  availability (`unavailable: true`), sun elevation (`after: sunset`) and hold
+  durations (`for:`).
 - **Four layouts**: `classic` (backdrop room icon, chips right, dock bottom
   right), `controls-bottom`, `header-bar` and `compact` — adaptive between
   full and half dashboard width via ResizeObserver.
@@ -224,7 +227,18 @@ alerts:
   - entity: binary_sensor.motion_while_armed   # e.g. a template helper
     active_state: "on"      # which state counts as active (invert: true flips it)
     severity: critical
+  - entity: cover.living_room_shutter
+    unavailable: true       # fires while the entity is missing / unavailable /
+    label: Shutter offline  # unknown / NaN — the states behind the empty values
+    severity: warning
 ```
+
+`unavailable: true` is the one alert that survives a dead entity: every other
+match is skipped for an entity without a usable value, so a flaky cover bridge
+or a contact sensor with an empty battery would otherwise fail silently. It
+takes precedence over `active_state` / `below` / `above`, reads `attribute`
+when one is given, and pairs with `invert: true` to alert while the entity *is*
+available.
 
 ### `card_alerts` — outline rules
 
@@ -248,7 +262,19 @@ card_alerts:
       - entity: cover.living_room_shutter
         attribute: current_position
         below: 50
+  - outline: warning
+    match: any
+    conditions:
+      - entity: cover.living_room_shutter
+        unavailable: true   # cover bridge dropped out
+        for: "00:05:00"
 ```
+
+A condition is never satisfied by an unavailable entity — that is what
+`unavailable: true` is for. It skips the value checks (there is no value) but
+still honours `for:` as long as Home Assistant still knows the entity; for one
+that vanished from the state machine entirely there is no timestamp to measure,
+so the hold is skipped rather than blocking the rule forever.
 
 ### Theming
 

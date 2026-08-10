@@ -241,6 +241,39 @@ describe("alertActive", () => {
     );
     expect(alertActive({ entity: "b.s" }, undefined)).toBe(false);
   });
+
+  it("fires on unavailable: true for every no-value state", () => {
+    const item = { entity: "c.x", unavailable: true };
+    for (const state of ["unavailable", "unknown", "none", "NaN", ""])
+      expect(alertActive(item, entity("c.x", state))).toBe(true);
+    expect(alertActive(item, undefined)).toBe(true);
+    expect(alertActive(item, entity("c.x", "open"))).toBe(false);
+  });
+
+  it("lets unavailable: true win over a value match", () => {
+    // Without the availability branch, below: 20 would swallow the dead sensor.
+    const item = { entity: "s.batt", unavailable: true, below: 20 };
+    expect(alertActive(item, entity("s.batt", "unavailable"))).toBe(true);
+    expect(alertActive(item, entity("s.batt", "5"))).toBe(false);
+  });
+
+  it("inverts an availability alert into an is-available alert", () => {
+    const item = { entity: "c.x", unavailable: true, invert: true };
+    expect(alertActive(item, entity("c.x", "unavailable"))).toBe(false);
+    expect(alertActive(item, entity("c.x", "open"))).toBe(true);
+  });
+
+  it("checks an attribute's availability when one is given", () => {
+    const item = {
+      entity: "c.x",
+      unavailable: true,
+      attribute: "current_position",
+    };
+    expect(alertActive(item, entity("c.x", "open", {}))).toBe(true);
+    expect(
+      alertActive(item, entity("c.x", "open", { current_position: 40 })),
+    ).toBe(false);
+  });
 });
 
 describe("activeAlerts", () => {
@@ -406,6 +439,57 @@ describe("evalOutline", () => {
       now,
     );
     expect(result.outline).toBe("critical");
+  });
+
+  it("matches unavailable entities only with unavailable: true", () => {
+    const get = getState([entity("cover.tahoma", "unavailable")]);
+    const plain = [{ entity: "cover.tahoma", state: "open" }];
+    const avail = [{ entity: "cover.tahoma", unavailable: true }];
+    expect(
+      evalOutline([{ outline: "warning", conditions: plain }], get, now)
+        .outline,
+    ).toBeNull();
+    expect(
+      evalOutline([{ outline: "warning", conditions: avail }], get, now)
+        .outline,
+    ).toBe("warning");
+    // …and stays quiet once the cover reports again.
+    expect(
+      evalOutline(
+        [{ outline: "warning", conditions: avail }],
+        getState([entity("cover.tahoma", "open")]),
+        now,
+      ).outline,
+    ).toBeNull();
+  });
+
+  it("matches an entity hass no longer knows, ignoring its for: hold", () => {
+    const get = getState([]);
+    const rules = [
+      {
+        outline: "warning" as const,
+        conditions: [
+          { entity: "cover.gone", unavailable: true, for: "00:10:00" },
+        ],
+      },
+    ];
+    expect(evalOutline(rules, get, now).outline).toBe("warning");
+  });
+
+  it("still honours for: while hass keeps the unavailable entity", () => {
+    const changed = new Date(now - 60_000).toISOString();
+    const get = getState([entity("cover.tahoma", "unavailable", {}, changed)]);
+    const rules = [
+      {
+        outline: "warning" as const,
+        conditions: [
+          { entity: "cover.tahoma", unavailable: true, for: "00:10:00" },
+        ],
+      },
+    ];
+    const result = evalOutline(rules, get, now);
+    expect(result.outline).toBeNull();
+    expect(result.recheckInMs).toBeGreaterThan(0);
   });
 
   it("returns no outline for empty rules or conditions", () => {
