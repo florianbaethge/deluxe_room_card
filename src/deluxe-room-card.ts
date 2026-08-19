@@ -21,6 +21,7 @@ import {
   activeAlerts,
   evalOutline,
   formatValue,
+  humidityLevel,
   openingView,
   thresholdLevel,
   type AlertView,
@@ -304,7 +305,7 @@ export class DeluxeRoomCard extends LitElement {
       ? this._getState(climate.humidity)?.state
       : undefined;
     const tempLevel = thresholdLevel(temp, climate.temperature_thresholds);
-    const humLevel = thresholdLevel(hum, climate.humidity_thresholds);
+    const humLevel = humidityLevel(hum, temp, climate.humidity_thresholds);
     if (tempLevel === "low_crit")
       result.push(this._climateAlert("temp-low", "too_cold", "mdi:snowflake"));
     if (tempLevel === "high_crit")
@@ -447,6 +448,14 @@ export class DeluxeRoomCard extends LitElement {
                 "mdi:water-percent",
                 climate.humidity_thresholds,
                 "humidity_no_value",
+                // Displayed relative, classified on the configured scale.
+                humidityLevel(
+                  this._getState(climate.humidity)?.state,
+                  climate.temperature
+                    ? this._getState(climate.temperature)?.state
+                    : undefined,
+                  climate.humidity_thresholds,
+                ),
               )
             : nothing
         }
@@ -460,6 +469,7 @@ export class DeluxeRoomCard extends LitElement {
     icon: string,
     thresholds: Thresholds | undefined,
     missingKey: string,
+    levelOverride?: ThresholdLevel,
   ): TemplateResult {
     const entity = this._getState(entityId);
     const text = formatValue(entity?.state, unit);
@@ -470,7 +480,8 @@ export class DeluxeRoomCard extends LitElement {
         ${entity ? this._t(missingKey) : this._t("entity_missing")}
       </span>`;
     }
-    const level: ThresholdLevel = thresholdLevel(entity?.state, thresholds);
+    const level: ThresholdLevel =
+      levelOverride ?? thresholdLevel(entity?.state, thresholds);
     return html`<span class="climate-value level-${level}">
       <ha-icon .icon=${icon}></ha-icon>
       ${text}

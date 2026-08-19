@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  absoluteHumidity,
   activeAlerts,
   alertActive,
   coverPositionOf,
   evalCondition,
   evalOutline,
   formatValue,
+  humidityLevel,
   openingView,
   parseDuration,
   parseNumber,
@@ -69,6 +71,57 @@ describe("thresholdLevel", () => {
   it("supports partial thresholds (empty = off)", () => {
     expect(thresholdLevel(10, { high: 60 })).toBe("normal");
     expect(thresholdLevel(75, { high: 60 })).toBe("high");
+  });
+});
+
+describe("absoluteHumidity", () => {
+  it("converts relative humidity to g/m3", () => {
+    // 22.2 degC / 67.8 % rH is ~13.3 g/m3 (dew point ~16 degC).
+    expect(absoluteHumidity(22.2, 67.8)).toBeCloseTo(13.28, 1);
+    // The same percentage holds far less water when it is colder.
+    expect(absoluteHumidity(22, 60)).toBeCloseTo(11.62, 1);
+    expect(absoluteHumidity(15, 60)).toBeCloseTo(7.68, 1);
+  });
+
+  it("accepts string states and rejects unusable input", () => {
+    expect(absoluteHumidity("22.2", "67.8")).toBeCloseTo(13.28, 1);
+    expect(absoluteHumidity("unavailable", 60)).toBeNull();
+    expect(absoluteHumidity(22, undefined)).toBeNull();
+    expect(absoluteHumidity(22, 120)).toBeNull();
+  });
+});
+
+describe("humidityLevel", () => {
+  const relative = { low: 35, high: 60, high_crit: 70 };
+  const absolute = {
+    scale: "absolute" as const,
+    low: 6,
+    high: 13,
+    high_crit: 17,
+  };
+
+  it("compares percentages when the scale is relative or unset", () => {
+    expect(humidityLevel(67.8, 22.2, relative)).toBe("high");
+    expect(humidityLevel(67.8, undefined, relative)).toBe("high");
+    expect(
+      humidityLevel(67.8, 22.2, { ...relative, scale: "relative" as const }),
+    ).toBe("high");
+  });
+
+  it("compares water content when the scale is absolute", () => {
+    // 67.8 % at 22.2 degC = 13.3 g/m3 -> just over the "high" mark.
+    expect(humidityLevel(67.8, 22.2, absolute)).toBe("high");
+    // The same percentage in a cold room is only 7.7 g/m3 -> fine.
+    expect(humidityLevel(60, 15, absolute)).toBe("normal");
+    // ...where the relative scale would have called it a warning.
+    expect(humidityLevel(60, 15, relative)).toBe("high");
+    expect(humidityLevel(90, 25, absolute)).toBe("high_crit");
+  });
+
+  it("stays unknown when absolute thresholds have no temperature", () => {
+    expect(humidityLevel(67.8, undefined, absolute)).toBe("unknown");
+    expect(humidityLevel(67.8, "unavailable", absolute)).toBe("unknown");
+    expect(humidityLevel("unavailable", 22.2, absolute)).toBe("unknown");
   });
 });
 

@@ -212,6 +212,10 @@ export class DeluxeRoomCardEditor extends LitElement {
         type: "expandable",
         title: this._t("thresholds_hum"),
         schema: [
+          this._select("scale", [
+            ["relative", "scale_relative"],
+            ["absolute", "scale_absolute"],
+          ]),
           {
             name: "",
             type: "grid",
@@ -371,6 +375,16 @@ export class DeluxeRoomCardEditor extends LitElement {
 
   /* ------------------------------------------------------------- labels --- */
 
+  /** Warn in place when absolute thresholds have no temperature to work with. */
+  private _climateHelper = (schema: { name: string }): string | undefined => {
+    if (schema.name !== "scale") return undefined;
+    const climate = this._config?.climate;
+    if (climate?.humidity_thresholds?.scale !== "absolute") return undefined;
+    return climate.temperature
+      ? undefined
+      : this._t("humidity_scale_needs_temp");
+  };
+
   private _computeLabel = (schema: { name: string }): string => {
     const labels: Record<string, string> = {
       title: this._t("title"),
@@ -393,6 +407,7 @@ export class DeluxeRoomCardEditor extends LitElement {
       low_crit: this._t("threshold_low_crit"),
       high: this._t("threshold_high"),
       high_crit: this._t("threshold_high_crit"),
+      scale: this._t("humidity_scale"),
       alert_on_threshold: this._t("alert_on_threshold"),
       window: this._t("contact_sensor"),
       cover: this._t("cover_entity"),
@@ -479,13 +494,22 @@ export class DeluxeRoomCardEditor extends LitElement {
               temperature: climate.temperature ?? "",
               humidity: climate.humidity ?? "",
               temperature_thresholds: climate.temperature_thresholds ?? {},
-              humidity_thresholds: climate.humidity_thresholds ?? {},
+              humidity_thresholds: {
+                scale: "relative",
+                ...(climate.humidity_thresholds ?? {}),
+              },
               alert_on_threshold: climate.alert_on_threshold ?? false,
             }}
             .schema=${this._climateSchema()}
             .computeLabel=${this._computeLabel}
+            .computeHelper=${this._climateHelper}
             @value-changed=${this._climateChanged}
           ></ha-form>
+          ${this._renderInfo(
+            "humidity_scale",
+            this._t("humidity_scale_info_title"),
+            this._t("humidity_scale_info"),
+          )}
         `,
       )}
       ${this._renderSection("import", this._t("import_from_area"), 0, () =>
@@ -494,6 +518,30 @@ export class DeluxeRoomCardEditor extends LitElement {
       ${this._renderList(this._openingsSection())}
       ${this._renderList(this._controlsSection())}
       ${this._renderList(this._alertsSection())} ${this._renderRules()}
+    `;
+  }
+
+  /** Inline "i" explainer that folds open under a form. */
+  private _renderInfo(
+    key: string,
+    title: string,
+    body: string,
+  ): TemplateResult {
+    const open = this._openSections[`info:${key}`] ?? false;
+    return html`
+      <div class="info">
+        <button
+          class="info-head"
+          @click=${() => this._toggleSection(`info:${key}`)}
+        >
+          <ha-icon icon="mdi:information-outline"></ha-icon>
+          <span class="info-title">${title}</span>
+          <ha-icon
+            .icon=${open ? "mdi:chevron-up" : "mdi:chevron-down"}
+          ></ha-icon>
+        </button>
+        ${open ? html`<div class="info-body">${body}</div>` : nothing}
+      </div>
     `;
   }
 
@@ -1019,12 +1067,17 @@ export class DeluxeRoomCardEditor extends LitElement {
       temperature_thresholds: pruneEmpty(
         (value.temperature_thresholds ?? {}) as Record<string, number>,
       ),
-      humidity_thresholds: pruneEmpty(
-        (value.humidity_thresholds ?? {}) as Record<string, number>,
-      ),
+      humidity_thresholds: this._humidityThresholds(value.humidity_thresholds),
       alert_on_threshold: (value.alert_on_threshold as boolean) || undefined,
     });
     this._emit({ ...this._config!, climate });
+  }
+
+  /** Prune empties and the implicit "relative" scale out of the thresholds. */
+  private _humidityThresholds(value: unknown): Record<string, unknown> {
+    const thresholds = pruneEmpty((value ?? {}) as Record<string, unknown>);
+    if (thresholds.scale === "relative") delete thresholds.scale;
+    return thresholds;
   }
 
   static styles = css`
@@ -1048,6 +1101,49 @@ export class DeluxeRoomCardEditor extends LitElement {
       flex-shrink: 0;
       --mdc-icon-button-size: 40px;
       --mdc-icon-size: 20px;
+    }
+    .info {
+      margin-top: 8px;
+      border: 1px solid
+        color-mix(in srgb, var(--primary-text-color, #212121) 12%, transparent);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .info-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 8px 10px;
+      background: none;
+      border: none;
+      color: var(--secondary-text-color, #727272);
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      text-align: left;
+    }
+    .info-head:hover {
+      background: color-mix(
+        in srgb,
+        var(--primary-text-color, #212121) 4%,
+        transparent
+      );
+    }
+    .info-head ha-icon {
+      --mdc-icon-size: 18px;
+      flex-shrink: 0;
+    }
+    .info-title {
+      flex: 1;
+      min-width: 0;
+    }
+    .info-body {
+      padding: 0 12px 12px 12px;
+      color: var(--secondary-text-color, #727272);
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-line;
     }
     .section-head {
       display: flex;

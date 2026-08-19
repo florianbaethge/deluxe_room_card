@@ -377,4 +377,30 @@ describe("editor", () => {
     expect(temp?.type).toBe("expandable");
     expect(hum?.type).toBe("expandable");
   });
+
+  it("offers a relative/absolute scale inside the humidity thresholds", async () => {
+    const editor = await mountEditor();
+    const schema = (
+      editor as unknown as {
+        _climateSchema: () => { name?: string; schema?: { name?: string }[] }[];
+      }
+    )._climateSchema();
+    const hum = schema.find((s) => s.name === "humidity_thresholds");
+    expect(hum?.schema?.some((s) => s.name === "scale")).toBe(true);
+  });
+
+  it("keeps an absolute scale but drops the implicit relative one", async () => {
+    const editor = await mountEditor();
+    const prune = (
+      editor as unknown as {
+        _humidityThresholds: (value: unknown) => Record<string, unknown>;
+      }
+    )._humidityThresholds.bind(editor);
+    expect(prune({ scale: "absolute", high: 13, high_crit: "" })).toEqual({
+      scale: "absolute",
+      high: 13,
+    });
+    expect(prune({ scale: "relative", high: 60 })).toEqual({ high: 60 });
+    expect(prune({ scale: "relative" })).toEqual({});
+  });
 });

@@ -66,11 +66,24 @@ export interface Thresholds {
   high_crit?: number;
 }
 
+/** Scale the humidity thresholds are written in. */
+export type HumidityScale = "relative" | "absolute";
+
+/**
+ * Humidity thresholds. With `scale: "absolute"` the numbers are read as g/m3
+ * and compared against the water actually held by the air, derived from
+ * `climate.temperature` — a fixed percentage warns too early in summer and too
+ * late in winter. The displayed value stays the relative percentage.
+ */
+export interface HumidityThresholds extends Thresholds {
+  scale?: HumidityScale;
+}
+
 export interface ClimateConfig {
   temperature?: string;
   humidity?: string;
   temperature_thresholds?: Thresholds;
-  humidity_thresholds?: Thresholds;
+  humidity_thresholds?: HumidityThresholds;
   /** Raise an alert bar when a critical threshold is crossed. */
   alert_on_threshold?: boolean;
 }

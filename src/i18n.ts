@@ -10,8 +10,8 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     half: "Half",
     unknown: "Unknown",
     no_value: "no value",
-    temp_no_value: "Temp – no value",
-    humidity_no_value: "Humidity – no value",
+    temp_no_value: "No Temp",
+    humidity_no_value: "No Humidity",
     entity_missing: "Entity not found",
     too_cold: "Too cold",
     too_hot: "Too hot",
@@ -45,6 +45,27 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     threshold_low_crit: "Low critical",
     threshold_high: "High",
     threshold_high_crit: "High critical",
+    humidity_scale: "Threshold scale",
+    scale_relative: "Relative (%)",
+    scale_absolute: "Absolute (g/m³)",
+    humidity_scale_needs_temp:
+      "Needs a temperature sensor — without one the humidity stays uncoloured.",
+    humidity_scale_info_title: "Relative or absolute?",
+    humidity_scale_info:
+      "Relative humidity (%) is the usual reading and is always what the card " +
+      "displays. The thresholds can be judged on the absolute scale instead: " +
+      "the card then derives the water actually held by the air (g/m³) from " +
+      "the temperature and the relative humidity, and compares that.\n\n" +
+      "Why it helps: 60 % at 22 °C is 11.6 g/m³, but 60 % at 15 °C is only " +
+      "7.7 g/m³ — the same percentage means very different amounts of water. " +
+      "A fixed percentage therefore warns too early in summer and too late " +
+      "in winter.\n\n" +
+      "Rules of thumb (absolute): below ~6 g/m³ the air is dry; from ~13 g/m³ " +
+      "airing out starts to pay off; from ~17 g/m³ mould becomes a risk on " +
+      "cold outer-wall corners in poorly insulated rooms.\n\n" +
+      "Absolute thresholds need a temperature sensor. Without one the card " +
+      "leaves the humidity unclassified rather than comparing percentages " +
+      "against g/m³ limits.",
     alert_on_threshold: "Alert bar on critical threshold",
     openings: "Openings (windows, doors & covers)",
     opening: "Opening",
@@ -122,8 +143,8 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     half: "Halb",
     unknown: "Unbekannt",
     no_value: "kein Wert",
-    temp_no_value: "Temp – kein Wert",
-    humidity_no_value: "Feuchte – kein Wert",
+    temp_no_value: "Keine Temp.",
+    humidity_no_value: "Keine Feuchte",
     entity_missing: "Entität nicht gefunden",
     too_cold: "Zu kalt",
     too_hot: "Zu warm",
@@ -156,6 +177,28 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     threshold_low_crit: "Niedrig kritisch",
     threshold_high: "Hoch",
     threshold_high_crit: "Hoch kritisch",
+    humidity_scale: "Grenzwert-Skala",
+    scale_relative: "Relativ (%)",
+    scale_absolute: "Absolut (g/m³)",
+    humidity_scale_needs_temp:
+      "Braucht einen Temperatursensor — ohne den bleibt die Feuchte ungefärbt.",
+    humidity_scale_info_title: "Relativ oder absolut?",
+    humidity_scale_info:
+      "Relative Feuchte (%) ist der übliche Messwert und wird immer " +
+      "angezeigt. Für die Grenzwerte kannst du stattdessen die absolute " +
+      "Skala wählen: Die Karte rechnet dann aus Temperatur und relativer " +
+      "Feuchte den tatsächlichen Wassergehalt der Luft aus (g/m³) und " +
+      "vergleicht diesen.\n\n" +
+      "Warum das hilft: 60 % bei 22 °C sind 11,6 g/m³, 60 % bei 15 °C aber " +
+      "nur 7,7 g/m³ — derselbe Prozentwert bedeutet völlig unterschiedliche " +
+      "Wassermengen. Eine feste Prozentgrenze warnt deshalb im Sommer zu " +
+      "früh und im Winter zu spät.\n\n" +
+      "Faustregeln (absolut): unter ~6 g/m³ ist die Luft trocken, ab " +
+      "~13 g/m³ lohnt sich Lüften, ab ~17 g/m³ droht in schlecht gedämmten " +
+      "Räumen Schimmel an kalten Außenwandecken.\n\n" +
+      "Absolute Grenzwerte brauchen einen Temperatursensor. Ohne den lässt " +
+      "die Karte die Feuchte lieber unbewertet, statt Prozente gegen " +
+      "g/m³-Grenzen zu vergleichen.",
     alert_on_threshold: "Alarm-Leiste bei kritischem Grenzwert",
     openings: "Öffnungen (Fenster, Türen & Rollos)",
     opening: "Öffnung",
