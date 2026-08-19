@@ -143,10 +143,35 @@ controls:
 | --- | --- | --- |
 | `temperature` / `humidity` | entity | Sensors for the header line |
 | `temperature_thresholds` | map | `{ low, low_crit, high, high_crit }` — empty = off |
-| `humidity_thresholds` | map | same keys, in % |
+| `humidity_thresholds` | map | same keys, plus `scale` |
 | `alert_on_threshold` | bool | Raise a full-width alert bar on a critical threshold |
 
 Missing or `unavailable` values render as a clear message, never `NaN`.
+
+#### Relative or absolute humidity thresholds
+
+`humidity_thresholds.scale` is `relative` (default) or `absolute`. Relative
+thresholds are plain percentages. Absolute ones are `g/m³` of water actually
+held by the air, derived from `temperature` and the relative humidity — 60 % at
+22 °C is 11.6 g/m³ but only 7.7 g/m³ at 15 °C, so a fixed percentage warns too
+early in summer and too late in winter. The card always *displays* the relative
+percentage; only the classification changes.
+
+```yaml
+climate:
+  temperature: sensor.office_temperature
+  humidity: sensor.office_humidity
+  humidity_thresholds:
+    scale: absolute
+    low: 6
+    high: 13
+    high_crit: 17
+```
+
+Rough guide: under ~6 g/m³ the air is dry, from ~13 g/m³ airing out starts to
+pay off, and from ~17 g/m³ mould becomes a risk on cold outer-wall corners in
+poorly insulated rooms. Absolute thresholds need `temperature`; without it the
+humidity is left unclassified rather than compared against the wrong unit.
 
 ### `openings`
 

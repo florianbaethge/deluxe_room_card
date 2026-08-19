@@ -83,7 +83,7 @@ describe("rendering", () => {
     );
     const text = shadowText(card);
     expect(text).not.toContain("NaN");
-    expect(text).toContain("Temp – no value");
+    expect(text).toContain("No Temp");
   });
 
   it("flags entities that do not exist", async () => {
@@ -169,6 +169,56 @@ describe("rendering", () => {
       hass,
     );
     expect(shadowText(card)).toContain("Too humid");
+  });
+
+  it("judges absolute humidity thresholds against the water in the air", async () => {
+    // 68 % at 22 degC is 13.2 g/m3 — over "high", well under "high_crit".
+    const hass = makeHass([
+      entity("sensor.temp", "22", { unit_of_measurement: "°C" }),
+      entity("sensor.hum", "68"),
+    ]);
+    const card = await mountCard(
+      {
+        ...base,
+        climate: {
+          temperature: "sensor.temp",
+          humidity: "sensor.hum",
+          humidity_thresholds: {
+            scale: "absolute",
+            high: 13,
+            high_crit: 17,
+          },
+          alert_on_threshold: true,
+        },
+      },
+      hass,
+    );
+    const text = shadowText(card);
+    // Still displayed relative, only the classification changed.
+    expect(text).toContain("68.0 %");
+    expect(text).not.toContain("Too humid");
+    expect(
+      card.shadowRoot?.querySelector(".climate-value.level-high"),
+    ).toBeTruthy();
+  });
+
+  it("leaves absolute humidity unclassified without a temperature", async () => {
+    const hass = makeHass([entity("sensor.hum", "68")]);
+    const card = await mountCard(
+      {
+        ...base,
+        climate: {
+          humidity: "sensor.hum",
+          humidity_thresholds: { scale: "absolute", high: 13, high_crit: 17 },
+          alert_on_threshold: true,
+        },
+      },
+      hass,
+    );
+    expect(shadowText(card)).not.toContain("Too humid");
+    expect(
+      card.shadowRoot?.querySelector(".climate-value.level-unknown"),
+    ).toBeTruthy();
   });
 
   it("applies the outline class from card_alerts rules", async () => {

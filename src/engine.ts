@@ -10,6 +10,7 @@ import type {
   CardAlertRule,
   CardCondition,
   HassEntity,
+  HumidityThresholds,
   OpeningItem,
   OutlineLevel,
   Severity,
@@ -85,6 +86,52 @@ export function thresholdLevel(
   if (t.high !== undefined && num >= t.high) return "high";
   if (t.low !== undefined && num <= t.low) return "low";
   return "normal";
+}
+
+/* ------------------------------------------------------------ humidity --- */
+
+/* Magnus coefficients over water — good to ~0.1 % between -45 and 60 degC. */
+const MAGNUS_A = 17.62;
+const MAGNUS_B = 243.12;
+
+/** Saturation vapour pressure in hPa at a temperature in degC. */
+function saturationPressure(tempC: number): number {
+  return 6.112 * Math.exp((MAGNUS_A * tempC) / (MAGNUS_B + tempC));
+}
+
+/**
+ * Water actually held by the air in g/m3, from degC and % relative humidity.
+ * Null when either reading is missing or the humidity is out of range.
+ */
+export function absoluteHumidity(
+  temperature: unknown,
+  relative: unknown,
+): number | null {
+  const temp = parseNumber(temperature);
+  const rel = parseNumber(relative);
+  if (temp === null || rel === null) return null;
+  if (rel < 0 || rel > 100) return null;
+  const vapour = (rel / 100) * saturationPressure(temp);
+  return (216.7 * vapour) / (273.15 + temp);
+}
+
+/**
+ * Classify humidity against its thresholds, honouring `scale: "absolute"`.
+ *
+ * Absolute thresholds need a temperature reading; without one the numbers are
+ * not comparable to a percentage at all (a `high: 14` g/m3 limit would flag
+ * every plausible percentage as critical), so the level goes "unknown" rather
+ * than raising a wrong alert.
+ */
+export function humidityLevel(
+  humidity: unknown,
+  temperature: unknown,
+  thresholds?: HumidityThresholds,
+): ThresholdLevel {
+  if (thresholds?.scale !== "absolute")
+    return thresholdLevel(humidity, thresholds);
+  if (parseNumber(humidity) === null) return "unknown";
+  return thresholdLevel(absoluteHumidity(temperature, humidity), thresholds);
 }
 
 /* ------------------------------------------------------------ openings --- */

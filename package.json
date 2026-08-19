@@ -1,6 +1,6 @@
 {
   "name": "deluxe-room-card",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Home Assistant Lovelace card: room overview with combined window/cover chips, climate thresholds, light dock, alert bars and rule-based outlines.",
   "license": "MIT",
   "private": true,
