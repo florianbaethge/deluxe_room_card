@@ -313,7 +313,7 @@ describe("rendering", () => {
     expect(block).toBeTruthy();
     expect(block?.querySelector(".bar-name")?.textContent?.trim()).toBe("Left");
     expect(block?.querySelector(".bar-value")?.textContent?.trim()).toBe(
-      "60 %",
+      "60\u00A0%",
     );
     // Bar sits between the name and the value.
     const kids = Array.from(block?.children ?? []).map((el) => el.className);
