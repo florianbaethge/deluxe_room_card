@@ -51,6 +51,9 @@ declare global {
 /** Width below which the card switches to the narrow ("half") layout. */
 const NARROW_BREAKPOINT = 380;
 
+/** Width below which the narrow layout shrinks once more (phone half-width). */
+const TINY_BREAKPOINT = 250;
+
 const RADIAL_CIRCUMFERENCE = 2 * Math.PI * 15.5;
 
 const LONG_PRESS_MS = 500;
@@ -60,6 +63,8 @@ export class DeluxeRoomCard extends LitElement {
   @state() private _config?: DeluxeRoomCardConfig;
 
   @state() private _narrow = false;
+
+  @state() private _tiny = false;
 
   @state() private _hass?: HomeAssistant;
 
@@ -144,7 +149,10 @@ export class DeluxeRoomCard extends LitElement {
     if (typeof ResizeObserver !== "undefined") {
       this._resizeObserver = new ResizeObserver((entries) => {
         const width = entries[0]?.contentRect.width ?? 0;
-        if (width > 0) this._narrow = width < NARROW_BREAKPOINT;
+        if (width > 0) {
+          this._narrow = width < NARROW_BREAKPOINT;
+          this._tiny = width < TINY_BREAKPOINT;
+        }
       });
       this._resizeObserver.observe(this);
     }
@@ -224,6 +232,9 @@ export class DeluxeRoomCard extends LitElement {
     const layout = config.layout ?? "classic";
     const narrow =
       config.width === "half" || (config.width === "auto" && this._narrow);
+    // "tiny" is purely measured: only kicks in when the card is really that
+    // small (phone half-width), regardless of the configured width mode.
+    const tiny = narrow && this._tiny;
     const scale = config.icon_size ?? 1;
 
     const { outline, recheckInMs } = evalOutline(
@@ -259,6 +270,7 @@ export class DeluxeRoomCard extends LitElement {
     const classes = {
       card: true,
       narrow,
+      tiny,
       [`layout-${layout}`]: true,
       "outline-warning": outline === "warning",
       "outline-critical": outline === "critical",
@@ -536,7 +548,7 @@ export class DeluxeRoomCard extends LitElement {
             ? t("closed")
             : view.position >= 99
               ? t("open")
-              : `${Math.round(view.position)} %`
+              : `${Math.round(view.position)}\u00A0%`
           : t("unknown");
 
     let sub: string | null;
@@ -556,7 +568,7 @@ export class DeluxeRoomCard extends LitElement {
     } else if (view.hasCover) {
       sub =
         view.position !== null
-          ? `${Math.round(view.position)} %`
+          ? `${Math.round(view.position)}\u00A0%`
           : t("no_value");
     } else {
       sub = stateWord;
@@ -917,6 +929,9 @@ export class DeluxeRoomCard extends LitElement {
     .climate-value.missing {
       color: var(--drc-warning);
       font-size: 14px;
+      /* The "entity missing" sentence may wrap — a nowrap version widens the
+         title block and starves the chips next to it on narrow cards. */
+      white-space: normal;
     }
 
     /* Chips */
@@ -980,6 +995,8 @@ export class DeluxeRoomCard extends LitElement {
       display: inline-flex;
       align-items: center;
       gap: 4px;
+      /* "100 %" must never break between number and unit. */
+      white-space: nowrap;
     }
     /* Window-only chips: state color as background */
     .chip:not(.has-cover).win-open {
@@ -1255,11 +1272,26 @@ export class DeluxeRoomCard extends LitElement {
     }
     ha-card.narrow .title {
       font-size: 16px;
+      /* On narrow cards a long room name wraps (max two lines, hyphenated)
+         instead of getting clipped to "Hauswirtsc…". */
+      white-space: normal;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+      hyphens: auto;
     }
     /* Guarantee the title a fair share so a normal room name is not clipped
-       to "Wohnzi…" by wide chips sitting on the same row. */
+       by wide chips sitting on the same row — wrapping covers the rest. */
     ha-card.narrow.layout-classic .title-block {
-      min-width: 45%;
+      min-width: 40%;
+    }
+    /* ...but when chips share the row, cap the title so the chips keep
+       enough width to stay readable (the title wraps instead). */
+    ha-card.narrow.layout-classic .row.top:has(.chip) .title-block {
+      max-width: 52%;
     }
     ha-card.narrow .climate {
       gap: 8px;
@@ -1294,6 +1326,12 @@ export class DeluxeRoomCard extends LitElement {
     ha-card.narrow .combined-box {
       width: 22px;
       height: 22px;
+    }
+    /* Thinner contact frame — 3px eats too much chip width when narrow. */
+    ha-card.narrow .chip.has-cover.win-open,
+    ha-card.narrow .chip.has-cover.win-tilted,
+    ha-card.narrow .chip.has-cover.win-closed {
+      border-width: 2px;
     }
     ha-card.narrow .bar-block {
       min-width: 48px;
@@ -1340,6 +1378,92 @@ export class DeluxeRoomCard extends LitElement {
       padding: 8px 13px;
       font-size: 13px;
       --mdc-icon-size: 16px;
+    }
+
+    /* ---- Tiny mode (phone half-width, < 250px): one notch smaller ------- */
+    ha-card.tiny {
+      padding: 11px 12px;
+    }
+    ha-card.tiny .content {
+      gap: 8px;
+    }
+    ha-card.tiny .row {
+      gap: 8px;
+    }
+    ha-card.tiny .title {
+      font-size: 14px;
+    }
+    ha-card.tiny .climate {
+      gap: 7px;
+    }
+    ha-card.tiny .climate-value {
+      font-size: 11.5px;
+      --mdc-icon-size: 13px;
+    }
+    ha-card.tiny .climate-value.missing {
+      font-size: 10.5px;
+    }
+    ha-card.tiny .chip-stack {
+      gap: 5px;
+    }
+    /* On really small cards the chips win the flex tug-of-war: the title
+       shrinks (and wraps) first, chips only ellipsize past 62%. */
+    ha-card.tiny.layout-classic .title-block {
+      min-width: 38%;
+    }
+    ha-card.tiny.layout-classic .row.top .chip-stack.wrap {
+      flex-shrink: 0;
+      max-width: 62%;
+    }
+    ha-card.tiny .chip {
+      gap: 6px;
+      padding: 3px 8px;
+      border-radius: 14px;
+    }
+    ha-card.tiny .chip-icon {
+      --mdc-icon-size: 16px;
+    }
+    ha-card.tiny .chip-title {
+      font-size: 11px;
+    }
+    ha-card.tiny .chip-sub {
+      font-size: 10px;
+    }
+    ha-card.tiny .combined-box {
+      width: 19px;
+      height: 19px;
+      border-radius: 4px;
+    }
+    ha-card.tiny .bar-block {
+      min-width: 44px;
+    }
+    ha-card.tiny .radial,
+    ha-card.tiny .radial svg {
+      width: 24px;
+      height: 24px;
+    }
+    ha-card.tiny .control {
+      height: 36px;
+      min-width: 36px;
+      border-radius: 18px;
+      --mdc-icon-size: 17px;
+    }
+    ha-card.tiny .control.labeled {
+      padding: 0 10px;
+    }
+    ha-card.tiny .control-label {
+      font-size: 11.5px;
+    }
+    ha-card.tiny .dock {
+      gap: 6px;
+    }
+    ha-card.tiny .alert-bar {
+      padding: 7px 11px;
+      font-size: 12px;
+      --mdc-icon-size: 15px;
+    }
+    ha-card.tiny .room-icon {
+      --mdc-icon-size: calc(48px * var(--drc-scale));
     }
   `;
 }
