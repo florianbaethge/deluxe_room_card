@@ -124,7 +124,7 @@ controls:
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `title` | string | – | Room name (truncates with ellipsis, never overflows) |
+| `title` | string | – | Room name (wraps to two hyphenated lines on narrow cards, then truncates) |
 | `icon` | icon | `mdi:sofa` | Room icon — backdrop in `classic`, inline chip in the other layouts |
 | `icon_size` | number | `1.0` | Scale of the room icon and its circle (0.6–1.8) |
 | `layout` | string | `classic` | `classic` \| `controls-bottom` \| `header-bar` \| `compact` |

@@ -131,6 +131,23 @@ describe("rendering", () => {
     expect(shadowText(card)).toContain("Zu");
   });
 
+  it("sets the title lang from the hass locale for CSS hyphenation", async () => {
+    const hass = makeHass([entity("binary_sensor.win", "off")], {
+      locale: { language: "de" },
+    });
+    const card = await mountCard(
+      {
+        ...base,
+        title: "Hauswirtschaftsraum",
+        openings: { items: [{ window: "binary_sensor.win", name: "Fenster" }] },
+      },
+      hass,
+    );
+    expect(card.shadowRoot?.querySelector(".title")?.getAttribute("lang")).toBe(
+      "de",
+    );
+  });
+
   it("renders full-width alert bars only when active", async () => {
     const hass = makeHass([entity("binary_sensor.leak", "on")]);
     const card = await mountCard(
