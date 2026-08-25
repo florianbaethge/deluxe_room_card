@@ -446,9 +446,11 @@ function t(t,e,i,o){var n,r=arguments.length,s=r<3?e:null===o?o=Object.getOwnPro
           ${this._renderDock()}
         </div>
       </div>
-    `}_renderTitleBlock(){const t=this._config;return F`
+    `}_renderTitleBlock(){const t=this._config,e=this._hass?.locale?.language??this._hass?.language??"en";return F`
       <div class="title-block">
-        ${!1!==t.show_name?F`<span class="title">${t.title??""}</span>`:K}
+        ${!1!==t.show_name?F`<span class="title" lang=${e}
+                >${t.title??""}</span
+              >`:K}
         ${!1!==t.show_climate?this._renderClimate():K}
       </div>
     `}_renderClimate(){const t=this._config?.climate;return t?.temperature||t?.humidity?F`
@@ -1070,6 +1072,7 @@ function t(t,e,i,o){var n,r=arguments.length,s=r<3?e:null===o?o=Object.getOwnPro
       line-clamp: 2;
       overflow: hidden;
       overflow-wrap: anywhere;
+      -webkit-hyphens: auto;
       hyphens: auto;
     }
     /* Guarantee the title a fair share so a normal room name is not clipped
@@ -1081,6 +1084,11 @@ function t(t,e,i,o){var n,r=arguments.length,s=r<3?e:null===o?o=Object.getOwnPro
        enough width to stay readable (the title wraps instead). */
     ha-card.narrow.layout-classic .row.top:has(.chip) .title-block {
       max-width: 52%;
+    }
+    /* The stack can be wider than its chips (flex-grow / the tiny cap) —
+       keep the chips hugging the card's right edge anyway. */
+    ha-card.narrow.layout-classic .row.top .chip-stack.wrap {
+      justify-content: flex-end;
     }
     ha-card.narrow .climate {
       gap: 8px;
@@ -1254,5 +1262,5 @@ function t(t,e,i,o){var n,r=arguments.length,s=r<3?e:null===o?o=Object.getOwnPro
     ha-card.tiny .room-icon {
       --mdc-icon-size: calc(48px * var(--drc-scale));
     }
-  `}};t([ut()],Xt.prototype,"_config",void 0),t([ut()],Xt.prototype,"_narrow",void 0),t([ut()],Xt.prototype,"_tiny",void 0),t([ut()],Xt.prototype,"_hass",void 0),Xt=t([lt("deluxe-room-card")],Xt),window.customCards=window.customCards??[],window.customCards.push({type:"deluxe-room-card",name:"Deluxe Room Card",description:"Room overview card: windows & covers as combined chips, climate with thresholds, light dock, alert bars and rule-based outlines.",preview:!0,documentationURL:"https://github.com/florianbaethge/deluxe_room_card"}),console.info("%c DELUXE-ROOM-CARD %c 0.3.1 ","color: #fff; background: #2f7d54; font-weight: 700;","color: #2f7d54; background: #fff; font-weight: 700;");export{Xt as DeluxeRoomCard};
+  `}};t([ut()],Xt.prototype,"_config",void 0),t([ut()],Xt.prototype,"_narrow",void 0),t([ut()],Xt.prototype,"_tiny",void 0),t([ut()],Xt.prototype,"_hass",void 0),Xt=t([lt("deluxe-room-card")],Xt),window.customCards=window.customCards??[],window.customCards.push({type:"deluxe-room-card",name:"Deluxe Room Card",description:"Room overview card: windows & covers as combined chips, climate with thresholds, light dock, alert bars and rule-based outlines.",preview:!0,documentationURL:"https://github.com/florianbaethge/deluxe_room_card"}),console.info("%c DELUXE-ROOM-CARD %c 0.3.2 ","color: #fff; background: #2f7d54; font-weight: 700;","color: #2f7d54; background: #fff; font-weight: 700;");export{Xt as DeluxeRoomCard};
 //# sourceMappingURL=deluxe-room-card.js.map

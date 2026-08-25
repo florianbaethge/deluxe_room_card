@@ -422,11 +422,17 @@ export class DeluxeRoomCard extends LitElement {
 
   private _renderTitleBlock(): TemplateResult {
     const config = this._config!;
+    // CSS hyphenation needs the content language on the element itself:
+    // inside the shadow DOM (especially WebKit/iOS) the document lang is
+    // not reliably picked up.
+    const lang = this._hass?.locale?.language ?? this._hass?.language ?? "en";
     return html`
       <div class="title-block">
         ${
           config.show_name !== false
-            ? html`<span class="title">${config.title ?? ""}</span>`
+            ? html`<span class="title" lang=${lang}
+                >${config.title ?? ""}</span
+              >`
             : nothing
         }
         ${config.show_climate !== false ? this._renderClimate() : nothing}
@@ -1281,6 +1287,7 @@ export class DeluxeRoomCard extends LitElement {
       line-clamp: 2;
       overflow: hidden;
       overflow-wrap: anywhere;
+      -webkit-hyphens: auto;
       hyphens: auto;
     }
     /* Guarantee the title a fair share so a normal room name is not clipped
@@ -1292,6 +1299,11 @@ export class DeluxeRoomCard extends LitElement {
        enough width to stay readable (the title wraps instead). */
     ha-card.narrow.layout-classic .row.top:has(.chip) .title-block {
       max-width: 52%;
+    }
+    /* The stack can be wider than its chips (flex-grow / the tiny cap) —
+       keep the chips hugging the card's right edge anyway. */
+    ha-card.narrow.layout-classic .row.top .chip-stack.wrap {
+      justify-content: flex-end;
     }
     ha-card.narrow .climate {
       gap: 8px;
