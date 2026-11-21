@@ -348,7 +348,11 @@ export class DeluxeRoomCard extends LitElement {
   private _healthMatches(): HealthMatch[] {
     const id = this._config?.health_entity;
     if (!id) return [];
-    return matchHealth(healthProblems(this._getState(id)), this._entityRoles());
+    return matchHealth(
+      healthProblems(this._getState(id)),
+      this._entityRoles(),
+      DEVICE_ROLE,
+    );
   }
 
   /**

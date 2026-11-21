@@ -349,15 +349,20 @@ export interface HealthMatch {
 
 /**
  * Problems that concern this card: a problem matches when one of its device's
- * entities has a role on the card. One match per problem, first role wins.
+ * entities has a role on the card. One match per problem; a real role wins
+ * over `fallbackRole` (the marker for entities that only sit in alerts).
  */
 export function matchHealth(
   problems: HealthProblem[],
   roles: Map<string, string>,
+  fallbackRole?: string,
 ): HealthMatch[] {
   const result: HealthMatch[] = [];
   for (const problem of problems) {
-    const hit = problem.entities?.find((id) => roles.has(id));
+    const ids = problem.entities ?? [];
+    const hit =
+      ids.find((id) => roles.has(id) && roles.get(id) !== fallbackRole) ??
+      ids.find((id) => roles.has(id));
     if (hit) result.push({ problem, role: roles.get(hit)! });
   }
   return result;
