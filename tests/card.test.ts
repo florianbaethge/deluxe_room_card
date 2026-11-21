@@ -636,7 +636,8 @@ describe("device health with configured alerts", () => {
       },
       {
         problem: "offline",
-        entities: ["sensor.room_temperature", "sensor.room_battery"],
+        // battery first: it is an alert entity, the climate role must still win
+        entities: ["sensor.room_battery", "sensor.room_temperature"],
       },
     ];
     const hass = makeHass([
@@ -652,6 +653,7 @@ describe("device health with configured alerts", () => {
         climate: { temperature: "sensor.room_temperature" },
         alerts: [
           { entity: "sensor.motion_battery", below: 20, label: "Old battery" },
+          { entity: "sensor.room_battery", below: 20, label: "Room battery" },
           {
             entity: "sensor.room_temperature",
             unavailable: true,
