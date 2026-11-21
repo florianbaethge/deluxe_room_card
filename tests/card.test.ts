@@ -624,3 +624,49 @@ describe("device health", () => {
     expect(card.shadowRoot?.querySelectorAll(".alert-bar")).toHaveLength(0);
   });
 });
+
+describe("device health with configured alerts", () => {
+  it("words alert-only devices by name and drops alerts the problem repeats", async () => {
+    const problems = [
+      {
+        name: "Kitchen motion",
+        problem: "battery",
+        battery: 11,
+        entities: ["binary_sensor.motion", "sensor.motion_battery"],
+      },
+      {
+        problem: "offline",
+        entities: ["sensor.room_temperature", "sensor.room_battery"],
+      },
+    ];
+    const hass = makeHass([
+      entity("sensor.room_temperature", "unavailable"),
+      entity("sensor.motion_battery", "11", { device_class: "battery" }),
+      entity("binary_sensor.leak", "on"),
+      entity("sensor.device_problems", "2", { problems }),
+    ]);
+    const card = await mountCard(
+      {
+        ...base,
+        health_entity: "sensor.device_problems",
+        climate: { temperature: "sensor.room_temperature" },
+        alerts: [
+          { entity: "sensor.motion_battery", below: 20, label: "Old battery" },
+          {
+            entity: "sensor.room_temperature",
+            unavailable: true,
+            label: "Old offline",
+          },
+          { entity: "binary_sensor.leak", label: "Water!" },
+        ],
+      },
+      hass,
+    );
+    const text = shadowText(card);
+    expect(text).toContain("Kitchen motion · battery 11 %");
+    expect(text).toContain("Climate sensor offline");
+    expect(text).toContain("Water!");
+    expect(text).not.toContain("Old battery");
+    expect(text).not.toContain("Old offline");
+  });
+});

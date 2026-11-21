@@ -19,6 +19,7 @@ import {
 } from "./config";
 import {
   activeAlerts,
+  type HealthMatch,
   healthProblems,
   matchHealth,
   sinceText,
@@ -34,6 +35,7 @@ import {
 import { fireEvent } from "./fire-event";
 import { languageOf, localize } from "./i18n";
 import type {
+  AlertItem,
   DeluxeRoomCardConfig,
   HassEntity,
   HomeAssistant,
@@ -60,6 +62,9 @@ const TINY_BREAKPOINT = 250;
 const RADIAL_CIRCUMFERENCE = 2 * Math.PI * 15.5;
 
 const LONG_PRESS_MS = 500;
+
+/** Role marker: word a health problem with the device's own name. */
+const DEVICE_ROLE = "\u0000device";
 
 @customElement("deluxe-room-card")
 export class DeluxeRoomCard extends LitElement {
@@ -247,9 +252,10 @@ export class DeluxeRoomCard extends LitElement {
     );
     this._scheduleOutlineRecheck(recheckInMs);
 
+    const health = this._healthMatches();
     const alerts = [
-      ...activeAlerts(config.alerts, this._getState),
-      ...this._healthAlerts(),
+      ...activeAlerts(this._alertsBesideHealth(health), this._getState),
+      ...this._healthAlerts(health),
       ...this._thresholdAlerts(),
     ];
     const bars = alerts.filter((a) => a.fullWidth);
@@ -333,23 +339,48 @@ export class DeluxeRoomCard extends LitElement {
       ] as string | undefined;
       set(item.entity, item.name ?? friendly ?? item.entity);
     }
+    // Alert entities (motion sensors, leak sensors …) have no role of their
+    // own on the card: their problems are worded with the device name.
+    for (const item of config.alerts ?? []) set(item.entity, DEVICE_ROLE);
     return roles;
   }
 
-  /** Alerts for device problems reported by the health sensor. */
-  private _healthAlerts(): AlertView[] {
+  private _healthMatches(): HealthMatch[] {
     const id = this._config?.health_entity;
     if (!id) return [];
-    const matches = matchHealth(
-      healthProblems(this._getState(id)),
-      this._entityRoles(),
-    );
+    return matchHealth(healthProblems(this._getState(id)), this._entityRoles());
+  }
+
+  /**
+   * Configured alerts minus those the health sensor already covers: an
+   * availability or battery alert on a device with a reported problem would
+   * only repeat it.
+   */
+  private _alertsBesideHealth(matches: HealthMatch[]): AlertItem[] {
+    const alerts = this._config?.alerts ?? [];
+    if (matches.length === 0) return alerts;
+    const covered = new Set(matches.flatMap((m) => m.problem.entities ?? []));
+    return alerts.filter((item) => {
+      if (!covered.has(item.entity)) return true;
+      const battery =
+        item.below !== undefined &&
+        this._getState(item.entity)?.attributes["device_class"] === "battery";
+      return !(item.unavailable || battery);
+    });
+  }
+
+  /** Alerts for device problems reported by the health sensor. */
+  private _healthAlerts(matches: HealthMatch[]): AlertView[] {
     const lang = languageOf(this._hass);
     const words = {
       minutes: this._t("unit_minutes"),
       hours: this._t("unit_hours"),
     };
-    return matches.map(({ problem, role }, index) => {
+    return matches.map(({ problem, role: cardRole }, index) => {
+      const role =
+        cardRole === DEVICE_ROLE
+          ? (problem.name ?? this._t("device"))
+          : cardRole;
       const since = sinceText(problem.since, Date.now(), lang, words);
       const sinceSuffix = since ? ` · ${this._t("health_since")} ${since}` : "";
       const key = `health|${index}|${problem.problem}`;
