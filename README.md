@@ -318,6 +318,12 @@ and battery levels. The card shows the problems that concern its own entities
 Each entry needs `problem` and `entities` (every entity id of the affected
 device); `since` (ISO time of the last message) and `battery` are optional.
 
+Devices that appear on the card only through `alerts` (a motion or leak
+sensor) are worded with the problem's `name`. While a device has a reported
+problem, its own availability (`unavailable: true`) and battery (`below` on a
+battery sensor) alerts are hidden, so the problem is not shown twice; other
+alerts of the device (water detected, motion) stay.
+
 ```yaml
 # attributes of sensor.device_problems
 problems:
