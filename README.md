@@ -322,7 +322,8 @@ Devices that appear on the card only through `alerts` (a motion or leak
 sensor) are worded with the problem's `name`. While a device has a reported
 problem, its own availability (`unavailable: true`) and battery (`below` on a
 battery sensor) alerts are hidden, so the problem is not shown twice; other
-alerts of the device (water detected, motion) stay.
+alerts of the device (water detected, motion) stay. An offline or silent
+climate sensor also drops its "no value" line, the bar already says it.
 
 ```yaml
 # attributes of sensor.device_problems
