@@ -345,6 +345,14 @@ export class DeluxeRoomCard extends LitElement {
     return roles;
   }
 
+  private _silencedByHealth(entityId: string): boolean {
+    const id = this._config?.health_entity;
+    if (!id) return false;
+    return healthProblems(this._getState(id)).some(
+      (p) => p.problem !== "battery" && p.entities?.includes(entityId),
+    );
+  }
+
   private _healthMatches(): HealthMatch[] {
     const id = this._config?.health_entity;
     if (!id) return [];
@@ -600,9 +608,13 @@ export class DeluxeRoomCard extends LitElement {
     thresholds: Thresholds | undefined,
     missingKey: string,
     levelOverride?: ThresholdLevel,
-  ): TemplateResult {
+  ): TemplateResult | typeof nothing {
     const entity = this._getState(entityId);
     const text = formatValue(entity?.state, unit);
+    // The health bar already says the sensor is gone; "no value" would repeat it.
+    if (text === null && entity && this._silencedByHealth(entityId)) {
+      return nothing;
+    }
     if (text === null) {
       // Honest empty state instead of "NaN °C".
       return html`<span class="climate-value missing">

@@ -583,6 +583,24 @@ describe("device health", () => {
     expect(text).toContain("Left window not reporting · since 7 h");
     expect(text).not.toContain("battery");
     expect(card.shadowRoot?.querySelectorAll(".alert-bar")).toHaveLength(1);
+    // the bar replaces the "no value" line of the climate sensor
+    expect(card.shadowRoot?.querySelector(".climate-value.missing")).toBeNull();
+  });
+
+  it("keeps the no-value line when the problem is only the battery", async () => {
+    const card = await mountCard(
+      healthConfig,
+      healthHass([
+        {
+          problem: "battery",
+          battery: 15,
+          entities: ["sensor.room_temperature"],
+        },
+      ]),
+    );
+    expect(
+      card.shadowRoot?.querySelector(".climate-value.missing"),
+    ).not.toBeNull();
   });
 
   it("words a low battery and dates problems older than two days", async () => {
