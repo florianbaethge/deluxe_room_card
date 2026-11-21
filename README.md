@@ -136,6 +136,7 @@ controls:
 | `show_name` / `show_climate` / `show_icon` | bool | `true` | Toggle the header parts |
 | `from_area` | string | – | Fill empty sections once from this area's entities |
 | `colors` | map | – | Fine-tuning: `window_open`, `window_tilted`, `window_closed`, `warning`, `critical` |
+| `health_entity` | entity | – | Sensor that lists device problems (see [Device health](#device-health)) |
 
 ### `climate`
 
@@ -300,6 +301,30 @@ A condition is never satisfied by an unavailable entity — that is what
 still honours `for:` as long as Home Assistant still knows the entity; for one
 that vanished from the state machine entirely there is no timestamp to measure,
 so the hold is skipped rather than blocking the rule forever.
+
+### Device health
+
+`health_entity` points at a sensor whose `problems` attribute lists device
+problems, for example a template sensor that watches Zigbee2MQTT's `last_seen`
+and battery levels. The card shows the problems that concern its own entities
+(climate sensors, openings, controls), worded with the card's name for them:
+
+| `problem` | Shown as | Example |
+| --- | --- | --- |
+| `offline` | full-width critical bar | *Climate sensor offline* |
+| `silent` | warning chip with the time of the last message | *Left window not reporting · since 7 h* |
+| `battery` | warning chip, critical below 10 % | *Left window · battery 12 %* |
+
+Each entry needs `problem` and `entities` (every entity id of the affected
+device); `since` (ISO time of the last message) and `battery` are optional.
+
+```yaml
+# attributes of sensor.device_problems
+problems:
+  - problem: silent
+    since: "2026-11-21T03:12:00+01:00"
+    entities: [binary_sensor.window_left_contact, sensor.window_left_battery]
+```
 
 ### Theming
 

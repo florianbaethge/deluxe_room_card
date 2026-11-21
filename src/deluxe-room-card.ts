@@ -19,6 +19,9 @@ import {
 } from "./config";
 import {
   activeAlerts,
+  healthProblems,
+  matchHealth,
+  sinceText,
   evalOutline,
   formatValue,
   humidityLevel,
@@ -29,7 +32,7 @@ import {
   type ThresholdLevel,
 } from "./engine";
 import { fireEvent } from "./fire-event";
-import { localize } from "./i18n";
+import { languageOf, localize } from "./i18n";
 import type {
   DeluxeRoomCardConfig,
   HassEntity,
@@ -246,6 +249,7 @@ export class DeluxeRoomCard extends LitElement {
 
     const alerts = [
       ...activeAlerts(config.alerts, this._getState),
+      ...this._healthAlerts(),
       ...this._thresholdAlerts(),
     ];
     const bars = alerts.filter((a) => a.fullWidth);
@@ -303,6 +307,79 @@ export class DeluxeRoomCard extends LitElement {
       () => this.requestUpdate(),
       Math.max(1000, recheckInMs),
     );
+  }
+
+  /** The card's name for each entity it shows, used to word health alerts. */
+  private _entityRoles(): Map<string, string> {
+    const config = this._config!;
+    const roles = new Map<string, string>();
+    const set = (id: string | undefined, role: string | undefined): void => {
+      if (id && role && !roles.has(id)) roles.set(id, role);
+    };
+    const climateRole = this._t("climate_sensor");
+    set(config.climate?.temperature, climateRole);
+    set(config.climate?.humidity, climateRole);
+    for (const item of config.openings?.items ?? []) {
+      for (const id of [item.window, item.door, item.cover]) {
+        const friendly = id
+          ? (this._getState(id)?.attributes["friendly_name"] as string)
+          : undefined;
+        set(id, item.name ?? friendly ?? id);
+      }
+    }
+    for (const item of config.controls ?? []) {
+      const friendly = this._getState(item.entity)?.attributes[
+        "friendly_name"
+      ] as string | undefined;
+      set(item.entity, item.name ?? friendly ?? item.entity);
+    }
+    return roles;
+  }
+
+  /** Alerts for device problems reported by the health sensor. */
+  private _healthAlerts(): AlertView[] {
+    const id = this._config?.health_entity;
+    if (!id) return [];
+    const matches = matchHealth(
+      healthProblems(this._getState(id)),
+      this._entityRoles(),
+    );
+    const lang = languageOf(this._hass);
+    const words = {
+      minutes: this._t("unit_minutes"),
+      hours: this._t("unit_hours"),
+    };
+    return matches.map(({ problem, role }, index) => {
+      const since = sinceText(problem.since, Date.now(), lang, words);
+      const sinceSuffix = since ? ` · ${this._t("health_since")} ${since}` : "";
+      const key = `health|${index}|${problem.problem}`;
+      switch (problem.problem) {
+        case "offline":
+          return {
+            key,
+            label: `${role} ${this._t("health_offline")}${sinceSuffix}`,
+            icon: "mdi:signal-off",
+            severity: "critical",
+            fullWidth: true,
+          };
+        case "silent":
+          return {
+            key,
+            label: `${role} ${this._t("health_silent")}${sinceSuffix}`,
+            icon: "mdi:clock-alert-outline",
+            severity: "warning",
+            fullWidth: false,
+          };
+        default:
+          return {
+            key,
+            label: `${role} · ${this._t("health_battery")} ${problem.battery ?? "?"} %`,
+            icon: "mdi:battery-alert-variant-outline",
+            severity: (problem.battery ?? 100) < 10 ? "critical" : "warning",
+            fullWidth: false,
+          };
+      }
+    });
   }
 
   /** Synthesized alert bars for crossed critical climate thresholds. */

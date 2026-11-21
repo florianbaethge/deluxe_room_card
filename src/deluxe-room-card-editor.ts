@@ -167,6 +167,7 @@ export class DeluxeRoomCardEditor extends LitElement {
           { name: "show_icon", selector: { boolean: {} } },
         ],
       },
+      { name: "health_entity", selector: { entity: { domain: "sensor" } } },
     ];
   }
 
@@ -399,6 +400,7 @@ export class DeluxeRoomCardEditor extends LitElement {
       show_name: this._t("show_name"),
       show_climate: this._t("show_climate"),
       show_icon: this._t("show_icon"),
+      health_entity: this._t("health_entity"),
       temperature: this._t("temperature"),
       humidity: this._t("humidity"),
       temperature_thresholds: this._t("thresholds_temp"),
@@ -452,6 +454,7 @@ export class DeluxeRoomCardEditor extends LitElement {
       show_name: config.show_name !== false,
       show_climate: config.show_climate !== false,
       show_icon: config.show_icon !== false,
+      health_entity: config.health_entity ?? "",
     };
 
     const climate = config.climate ?? {};
@@ -1050,6 +1053,7 @@ export class DeluxeRoomCardEditor extends LitElement {
       show_name: value.show_name as boolean,
       show_climate: value.show_climate as boolean,
       show_icon: value.show_icon as boolean,
+      health_entity: (value.health_entity as string) || undefined,
       openings: {
         ...this._config?.openings,
         state_style: value.state_style as never,
