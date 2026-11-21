@@ -535,3 +535,92 @@ describe("sizing", () => {
     expect(card.getGridOptions()).toMatchObject({ columns: 12 });
   });
 });
+
+describe("device health", () => {
+  const hoursAgo = (h: number): string =>
+    new Date(Date.now() - h * 3600_000).toISOString();
+
+  const healthConfig: DeluxeRoomCardConfig = {
+    ...base,
+    health_entity: "sensor.device_problems",
+    climate: { temperature: "sensor.room_temperature" },
+    openings: {
+      items: [{ name: "Left window", window: "binary_sensor.window_left" }],
+    },
+  };
+
+  function healthHass(problems: unknown[]): ReturnType<typeof makeHass> {
+    return makeHass([
+      entity("sensor.room_temperature", "unavailable"),
+      entity("binary_sensor.window_left", "off"),
+      entity("sensor.device_problems", String(problems.length), { problems }),
+    ]);
+  }
+
+  it("shows problems of the card's own devices with their role", async () => {
+    const card = await mountCard(
+      healthConfig,
+      healthHass([
+        {
+          problem: "offline",
+          since: null,
+          entities: ["sensor.room_battery", "sensor.room_temperature"],
+        },
+        {
+          problem: "silent",
+          since: hoursAgo(7),
+          entities: ["binary_sensor.window_left", "sensor.window_battery"],
+        },
+        {
+          problem: "battery",
+          battery: 11,
+          entities: ["binary_sensor.somewhere_else"],
+        },
+      ]),
+    );
+    const text = shadowText(card);
+    expect(text).toContain("Climate sensor offline");
+    expect(text).toContain("Left window not reporting · since 7 h");
+    expect(text).not.toContain("battery");
+    expect(card.shadowRoot?.querySelectorAll(".alert-bar")).toHaveLength(1);
+  });
+
+  it("words a low battery and dates problems older than two days", async () => {
+    const card = await mountCard(
+      healthConfig,
+      healthHass([
+        {
+          problem: "battery",
+          battery: 8,
+          entities: ["binary_sensor.window_left"],
+        },
+        {
+          problem: "silent",
+          since: "2026-10-26T13:15:37+01:00",
+          entities: ["sensor.room_temperature"],
+        },
+      ]),
+    );
+    const text = shadowText(card);
+    expect(text).toContain("Left window · battery 8 %");
+    expect(text).toMatch(/Climate sensor not reporting · since 10\/26/);
+    expect(
+      card.shadowRoot?.querySelectorAll(".alert-chip.severity-critical"),
+    ).toHaveLength(1);
+  });
+
+  it("ignores a missing or malformed health sensor", async () => {
+    const card = await mountCard(
+      healthConfig,
+      makeHass([
+        entity("sensor.device_problems", "1", {
+          problems: [{ problem: "exploded", entities: [] }, "nonsense"],
+        }),
+      ]),
+    );
+    expect(card.shadowRoot?.querySelectorAll(".alert-chip")).toHaveLength(0);
+    card.setConfig({ ...healthConfig, health_entity: "sensor.missing" });
+    await card.updateComplete;
+    expect(card.shadowRoot?.querySelectorAll(".alert-bar")).toHaveLength(0);
+  });
+});

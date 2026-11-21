@@ -91,6 +91,7 @@ export function relevantEntities(config: DeluxeRoomCardConfig): Set<string> {
   }
   for (const item of config.controls ?? []) add(item.entity);
   for (const item of config.alerts ?? []) add(item.entity);
+  add(config.health_entity);
   for (const rule of config.card_alerts ?? []) {
     for (const cond of rule.conditions) {
       add(cond.entity);

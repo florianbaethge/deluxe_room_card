@@ -221,6 +221,23 @@ export interface DeluxeRoomCardConfig {
   controls?: ControlItem[];
   alerts?: AlertItem[];
   card_alerts?: CardAlertRule[];
+  /**
+   * Sensor whose `problems` attribute lists device problems (offline, silent,
+   * low battery). The card shows those that concern its own entities.
+   */
+  health_entity?: string;
+}
+
+/** One entry of the health sensor's `problems` attribute. */
+export interface HealthProblem {
+  name?: string;
+  /** "offline" | "silent" | "battery"; other values are ignored. */
+  problem: string;
+  /** ISO time of the last message, when known. */
+  since?: string | null;
+  battery?: number | null;
+  /** All entity ids of the affected device. */
+  entities?: string[];
 }
 
 export const DEFAULT_CONFIG = {

@@ -10,6 +10,7 @@ import type {
   CardAlertRule,
   CardCondition,
   HassEntity,
+  HealthProblem,
   HumidityThresholds,
   OpeningItem,
   OutlineLevel,
@@ -318,6 +319,71 @@ export function activeAlerts(
         fullWidth: item.full_width ?? true,
       };
     });
+}
+
+/* ------------------------------------------------------ device health --- */
+
+const HEALTH_KINDS = ["offline", "silent", "battery"] as const;
+export type HealthKind = (typeof HEALTH_KINDS)[number];
+
+/** The problems listed by a health sensor; malformed entries are dropped. */
+export function healthProblems(
+  entity: HassEntity | undefined,
+): HealthProblem[] {
+  const raw = entity?.attributes["problems"];
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (p): p is HealthProblem =>
+      !!p &&
+      typeof p === "object" &&
+      HEALTH_KINDS.includes((p as HealthProblem).problem as HealthKind) &&
+      Array.isArray((p as HealthProblem).entities),
+  );
+}
+
+export interface HealthMatch {
+  problem: HealthProblem;
+  /** The card's own name for the affected entity (e.g. "Climate sensor"). */
+  role: string;
+}
+
+/**
+ * Problems that concern this card: a problem matches when one of its device's
+ * entities has a role on the card. One match per problem, first role wins.
+ */
+export function matchHealth(
+  problems: HealthProblem[],
+  roles: Map<string, string>,
+): HealthMatch[] {
+  const result: HealthMatch[] = [];
+  for (const problem of problems) {
+    const hit = problem.entities?.find((id) => roles.has(id));
+    if (hit) result.push({ problem, role: roles.get(hit)! });
+  }
+  return result;
+}
+
+/**
+ * "since" text for a problem: minutes or hours up to two days, then a date.
+ * Returns null when the time is unknown or unparsable.
+ */
+export function sinceText(
+  since: string | null | undefined,
+  now: number,
+  lang: string,
+  words: { minutes: string; hours: string },
+): string | null {
+  if (!since) return null;
+  const at = Date.parse(since);
+  if (Number.isNaN(at)) return null;
+  const minutes = Math.max(0, Math.round((now - at) / 60000));
+  if (minutes < 60) return `${minutes} ${words.minutes}`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours} ${words.hours}`;
+  return new Intl.DateTimeFormat(lang, {
+    day: "2-digit",
+    month: "2-digit",
+  }).format(new Date(at));
 }
 
 /* -------------------------------------------------- outline conditions --- */
